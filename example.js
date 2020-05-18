@@ -93,7 +93,7 @@ router.post('/send', function(req, res) {
 router.get('/init', async function(req, res) {
     
     //const client = new Client({ puppeteer: { headless: false , product: 'firefox',  args: ['-private', '-private-window'], executablePath: 'C:\\Program Files (x86)\\Mozilla Firefox\\firefox' }, session: sessionCfg });
-    const newClient = new Client({ puppeteer: { headless: false , args: ['--no-sandbox'] }, session: sessionCfg });
+    const newClient = new Client({ puppeteer: { args: ['--no-sandbox'],ignoreDefaultArgs: ['--disable-extensions'] }, session: sessionCfg });
     // You can use an existing session and avoid scanning a QR code by adding a "session" object to the client options.
     // This object must include WABrowserId, WASecretBundle, WAToken1 and WAToken2.
     try {
