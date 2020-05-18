@@ -44,7 +44,7 @@ console.log('Magic happens on port ' + port);
 
 
 //const client = new Client({ puppeteer: { headless: false , product: 'firefox',  args: ['-private', '-private-window'], executablePath: 'C:\\Program Files (x86)\\Mozilla Firefox\\firefox' }, session: sessionCfg });
-const client = new Client({ puppeteer: {args: ['--no-sandbox'], ignoreDefaultArgs: ['--disable-extensions'] }, session: sessionCfg });
+const client = new Client({ puppeteer: {headless: false,args: ['--no-sandbox'], ignoreDefaultArgs: ['--disable-extensions'] }, session: sessionCfg });
 // You can use an existing session and avoid scanning a QR code by adding a "session" object to the client options.
 // This object must include WABrowserId, WASecretBundle, WAToken1 and WAToken2.
 client.preInitialize().then(() => {
@@ -93,7 +93,7 @@ router.post('/send', function(req, res) {
 router.get('/init', async function(req, res) {
     
     //const client = new Client({ puppeteer: { headless: false , product: 'firefox',  args: ['-private', '-private-window'], executablePath: 'C:\\Program Files (x86)\\Mozilla Firefox\\firefox' }, session: sessionCfg });
-    const newClient = new Client({ puppeteer: { args: ['--no-sandbox'],ignoreDefaultArgs: ['--disable-extensions'] }, session: sessionCfg });
+    const newClient = new Client({ puppeteer: {headless: false, args: ['--no-sandbox'],ignoreDefaultArgs: ['--disable-extensions'] }, session: sessionCfg });
     // You can use an existing session and avoid scanning a QR code by adding a "session" object to the client options.
     // This object must include WABrowserId, WASecretBundle, WAToken1 and WAToken2.
     try {
@@ -138,7 +138,7 @@ router.get('/init', async function(req, res) {
     newClient.on('message', async msg => {
         console.log('MESSAGE RECEIVED', msg);
         // add php api for send msg object  "msg"
-        axios.post(req.url,msg)
+        axios.post(req.body.url,msg)
             .then(response => {
                 console.log(response.data);
             })
@@ -358,8 +358,9 @@ router.get('/init', async function(req, res) {
     });
 
     router.post(`/${responseObj.key}/send`, function(req, res) {
-        const number = req.number.includes('@c.us') ? number : `${number}@c.us`;
-        client.sendMessage(number, req.msg);
+        console.log('reqest ', req);
+        const number = req.body.number.includes('@c.us') ? number : `${number}@c.us`;
+        client.sendMessage(number, req.body.msg);
         res.json({ message: 'hooray! Message Sent!' });   
     });
     responseObj.qr= newClient.test;

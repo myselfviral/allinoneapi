@@ -65,7 +65,7 @@ class Client extends EventEmitter {
             * @param {string} qr QR Code
             */
         this.emit(Events.QR_RECEIVED, qr);
-    };
+    }
 
     /**
      * Sets up events and requirements, kicks off authentication request
