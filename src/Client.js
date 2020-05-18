@@ -32,102 +32,84 @@ const { ClientInfo, Message, MessageMedia, Contact, Location, GroupNotification 
  * @fires Client#change_battery
  */
 class Client extends EventEmitter {
+    
     constructor(options = {}) {
         super();
 
         this.options = Util.mergeDefault(DefaultOptions, options);
 
         this.pupBrowser = null;
-        this.pupPage = null;
+        this.pupPage;
+        this.test = null;
+        
     }
+    async getQrCode() {
+        // Check if retry button is present
+        var QR_RETRY_SELECTOR = 'div[data-ref] > span > div';
+        var qrRetry = await this.pupPage.$(QR_RETRY_SELECTOR);
+        if (qrRetry) {
+            await qrRetry.click();
+        }
+
+        // Wait for QR Code
+
+        const QR_CANVAS_SELECTOR = 'canvas';
+        await this.pupPage.waitForSelector(QR_CANVAS_SELECTOR, { timeout: this.options.qrTimeoutMs });
+        const qrImgData = await this.pupPage.$eval(QR_CANVAS_SELECTOR, canvas => [].slice.call(canvas.getContext('2d').getImageData(0, 0, 264, 264).data));
+        const qr = jsQR(qrImgData, 264, 264).data;
+        this.test = qr;
+        
+        /**
+            * Emitted when the QR code is received
+            * @event Client#qr
+            * @param {string} qr QR Code
+            */
+        this.emit(Events.QR_RECEIVED, qr);
+    };
 
     /**
      * Sets up events and requirements, kicks off authentication request
      */
-    async initialize() {
+    async preInitialize() {
         const browser = await puppeteer.launch(this.options.puppeteer);
         /*  const newContext = await browser.createIncognitoBrowserContext();
         console.info(newContext.isIncognito()); // True */
-        const page = (await browser.pages())[0];
-        page.setUserAgent(UserAgent);
+        this.pupPage = (await browser.pages())[0];
+        this.pupPage.setUserAgent(UserAgent);
 
         this.pupBrowser = browser;
-        this.pupPage = page;
+        //this.pupPage = page;
         
-        if (this.options.session) {
-            await page.evaluateOnNewDocument(
-                session => {
-                    localStorage.clear();
-                    localStorage.setItem('WABrowserId', session.WABrowserId);
-                    localStorage.setItem('WASecretBundle', session.WASecretBundle);
-                    localStorage.setItem('WAToken1', session.WAToken1);
-                    localStorage.setItem('WAToken2', session.WAToken2);
-                }, this.options.session);
-        }
+        await  this.pupPage.goto(WhatsWebURL);
 
-        await page.goto(WhatsWebURL);
+        //const KEEP_PHONE_CONNECTED_IMG_SELECTOR = '[data-asset-intro-image="true"]';
+        
+        await this.getQrCode();
+        /* let retryInterval = setInterval(this.getQrCode, this.options.qrRefreshIntervalMs);
 
+        // Wait for code scan
+        await page.waitForSelector(KEEP_PHONE_CONNECTED_IMG_SELECTOR, { timeout: 0 });
+        clearInterval(retryInterval); */
+
+        
+        
+    }
+
+    async initialize() {
+    
         const KEEP_PHONE_CONNECTED_IMG_SELECTOR = '[data-asset-intro-image="true"]';
 
-        if (this.options.session) {
-            // Check if session restore was successfull 
-            try {
-                await page.waitForSelector(KEEP_PHONE_CONNECTED_IMG_SELECTOR, { timeout: this.options.authTimeoutMs });
-            } catch (err) {
-                if (err.name === 'TimeoutError') {
-                    /**
-                     * Emitted when there has been an error while trying to restore an existing session
-                     * @event Client#auth_failure
-                     * @param {string} message
-                     */
-                    this.emit(Events.AUTHENTICATION_FAILURE, 'Unable to log in. Are the session details valid?');
-                    browser.close();
-                    if (this.options.restartOnAuthFail) {
-                        // session restore failed so try again but without session to force new authentication
-                        this.options.session = null;
-                        this.initialize();
-                    }
-                    return;
-                }
 
-                throw err;
-            }
+        let retryInterval = setInterval(this.getQrCode, this.options.qrRefreshIntervalMs);
 
-        } else {
-            const getQrCode = async () => {
-                // Check if retry button is present
-                var QR_RETRY_SELECTOR = 'div[data-ref] > span > div';
-                var qrRetry = await page.$(QR_RETRY_SELECTOR);
-                if (qrRetry) {
-                    await qrRetry.click();
-                }
+        // Wait for code scan
+        await this.pupPage.waitForSelector(KEEP_PHONE_CONNECTED_IMG_SELECTOR, { timeout: 0 });
+        clearInterval(retryInterval);
 
-                // Wait for QR Code
-
-                const QR_CANVAS_SELECTOR = 'canvas';
-                await page.waitForSelector(QR_CANVAS_SELECTOR, { timeout: this.options.qrTimeoutMs });
-                const qrImgData = await page.$eval(QR_CANVAS_SELECTOR, canvas => [].slice.call(canvas.getContext('2d').getImageData(0, 0, 264, 264).data));
-                const qr = jsQR(qrImgData, 264, 264).data;
-                /**
-                * Emitted when the QR code is received
-                * @event Client#qr
-                * @param {string} qr QR Code
-                */
-                this.emit(Events.QR_RECEIVED, qr);
-            };
-            getQrCode();
-            let retryInterval = setInterval(getQrCode, this.options.qrRefreshIntervalMs);
-
-            // Wait for code scan
-            await page.waitForSelector(KEEP_PHONE_CONNECTED_IMG_SELECTOR, { timeout: 0 });
-            clearInterval(retryInterval);
-
-        }
-
-        await page.evaluate(ExposeStore, moduleRaid.toString());
+        await this.pupPage.evaluate(ExposeStore, moduleRaid.toString());
 
         // Get session tokens
-        const localStorage = JSON.parse(await page.evaluate(() => {
+        const localStorage = JSON.parse(await this.pupPage.evaluate(() => {
             return JSON.stringify(window.localStorage);
         }));
 
@@ -146,18 +128,18 @@ class Client extends EventEmitter {
         this.emit(Events.AUTHENTICATED, session);
 
         // Check window.Store Injection
-        await page.waitForFunction('window.Store != undefined');
+        await this.pupPage.waitForFunction('window.Store != undefined');
 
         //Load util functions (serializers, helper functions)
-        await page.evaluate(LoadUtils);
+        await this.pupPage.evaluate(LoadUtils);
 
         // Expose client info
-        this.info = new ClientInfo(this, await page.evaluate(() => {
+        this.info = new ClientInfo(this, await this.pupPage.evaluate(() => {
             return window.Store.Conn.serialize();
         }));
 
         // Register events
-        await page.exposeFunction('onAddMessageEvent', msg => {
+        await this.pupPage.exposeFunction('onAddMessageEvent', msg => {
             if (!msg.isNewMsg) return;
 
             if (msg.type === 'gp2') {
@@ -208,7 +190,7 @@ class Client extends EventEmitter {
 
         let last_message;
 
-        await page.exposeFunction('onChangeMessageTypeEvent', (msg) => {
+        await this.pupPage.exposeFunction('onChangeMessageTypeEvent', (msg) => {
 
             if (msg.type === 'revoked') {
                 const message = new Message(this, msg);
@@ -229,7 +211,7 @@ class Client extends EventEmitter {
 
         });
 
-        await page.exposeFunction('onChangeMessageEvent', (msg) => {
+        await this.pupPage.exposeFunction('onChangeMessageEvent', (msg) => {
 
             if (msg.type !== 'revoked') {
                 last_message = msg;
@@ -237,7 +219,7 @@ class Client extends EventEmitter {
 
         });
 
-        await page.exposeFunction('onRemoveMessageEvent', (msg) => {
+        await this.pupPage.exposeFunction('onRemoveMessageEvent', (msg) => {
 
             if (!msg.isNewMsg) return;
 
@@ -252,7 +234,7 @@ class Client extends EventEmitter {
 
         });
 
-        await page.exposeFunction('onMessageAckEvent', (msg, ack) => {
+        await this.pupPage.exposeFunction('onMessageAckEvent', (msg, ack) => {
 
             const message = new Message(this, msg);
             
@@ -266,7 +248,7 @@ class Client extends EventEmitter {
 
         });
 
-        await page.exposeFunction('onMessageMediaUploadedEvent', (msg) => {
+        await this.pupPage.exposeFunction('onMessageMediaUploadedEvent', (msg) => {
 
             const message = new Message(this, msg);
             
@@ -278,7 +260,7 @@ class Client extends EventEmitter {
             this.emit(Events.MEDIA_UPLOADED, message);
         });
 
-        await page.exposeFunction('onAppStateChangedEvent', (state) => {
+        await this.pupPage.exposeFunction('onAppStateChangedEvent', (state) => {
 
             /**
              * Emitted when the connection state changes
@@ -310,7 +292,7 @@ class Client extends EventEmitter {
             }
         });
 
-        await page.exposeFunction('onBatteryStateChangedEvent', (state) => {
+        await this.pupPage.exposeFunction('onBatteryStateChangedEvent', (state) => {
             const { battery, plugged } = state;
 
             if(battery === undefined) return;
@@ -325,7 +307,7 @@ class Client extends EventEmitter {
             this.emit(Events.BATTERY_CHANGED, { battery, plugged });
         });
 
-        await page.evaluate(() => {
+        await this.pupPage.evaluate(() => {
             window.Store.Msg.on('add', (msg) => { if(msg.isNewMsg) window.onAddMessageEvent(msg); });
             window.Store.Msg.on('change', (msg) => { window.onChangeMessageEvent(msg); });
             window.Store.Msg.on('change:type', (msg) => { window.onChangeMessageTypeEvent(msg); });

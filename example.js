@@ -47,14 +47,18 @@ console.log('Magic happens on port ' + port);
 const client = new Client({ puppeteer: { headless: false, args: ['--no-sandbox'] }, session: sessionCfg });
 // You can use an existing session and avoid scanning a QR code by adding a "session" object to the client options.
 // This object must include WABrowserId, WASecretBundle, WAToken1 and WAToken2.
+client.preInitialize().then(() => {
+    client.initialize();
+});
 
-client.initialize();
+
+
 
 
 client.on('qr', (qr) => {
-    // NOTE: This event will not be fired if a session is specified.
+    // NOTE: This event will not be fired if a sessssion is specified.
     console.log('QR RECEIVED', qr);
-    responseObj.qr = qr;
+    // responseObj.qr = qr;
 });
 
 client.on('authenticated', (session) => {
@@ -89,24 +93,28 @@ router.post('/send', function(req, res) {
 router.get('/init', async function(req, res) {
     
     //const client = new Client({ puppeteer: { headless: false , product: 'firefox',  args: ['-private', '-private-window'], executablePath: 'C:\\Program Files (x86)\\Mozilla Firefox\\firefox' }, session: sessionCfg });
-    const newClient = new Client({ puppeteer: { headless: false }, session: sessionCfg });
+    const newClient = new Client({ puppeteer: { headless: false , args: ['--no-sandbox'] }, session: sessionCfg });
     // You can use an existing session and avoid scanning a QR code by adding a "session" object to the client options.
     // This object must include WABrowserId, WASecretBundle, WAToken1 and WAToken2.
     try {
-        await newClient.initialize();
+        await newClient.preInitialize().then(() => {
+            
+            newClient.initialize();
+        });
+        
     } catch (error) 
     {
         console.log(error);
     }
     responseObj.key= '!' + Math.random().toString(36).substr(2, 9);
 
-    await newClient.on('qr', (qr) => {
+    newClient.on('qr', (qr) => {
     // NOTE: This event will not be fired if a session is specified.
         console.log('new QR RECEIVED ', qr);
         responseObj.qr = qr;
     });
 
-    await newClient.on('authenticated', (session) => {
+    newClient.on('authenticated', (session) => {
         console.log('new AUTHENTICATED', session);
         sessionCfg=session;
         responseObj.session = session;
@@ -117,12 +125,12 @@ router.get('/init', async function(req, res) {
         });
     });
 
-    await newClient.on('auth_failure', msg => {
+    newClient.on('auth_failure', msg => {
     // Fired if session restore was unsuccessfull
         console.error('new AUTHENTICATION FAILURE', msg);
     });
 
-    await newClient.on('ready', () => {
+    newClient.on('ready', () => {
         console.log('new READY');
     });
 
@@ -354,6 +362,7 @@ router.get('/init', async function(req, res) {
         client.sendMessage(number, req.msg);
         res.json({ message: 'hooray! Message Sent!' });   
     });
+    responseObj.qr= newClient.test;
     console.log(responseObj);
     res.json(responseObj);   
 });
