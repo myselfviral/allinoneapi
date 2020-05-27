@@ -1,0 +1,7 @@
+Feed Processing Summary:
+	Number of records processed		32
+	Number of records successful		30
+
+original-record-number	order-id	order-item-id	error-code	error-type	error-message
+11	405-6022169-6507508		610008	Error	Invalid Schedule_pickup_date or time. Please pick a closer pickup date. Pickup_date should be in the format YYYY-MM-DD. Pickup time have changed and can be chosen from the following options only: 10:00 AM or 1:00 PM. Please make sure to schedule 15 min before the Pickup time. 
+3	407-1579349-5827537		610008	Error	Invalid Schedule_pickup_date or time. Please pick a closer pickup date. Pickup_date should be in the format YYYY-MM-DD. Pickup time have changed and can be chosen from the following options only: 10:00 AM or 1:00 PM. Please make sure to schedule 15 min before the Pickup time. 

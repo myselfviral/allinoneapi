@@ -19,7 +19,7 @@ class MessageMedia {
          * @type {string}
          */
         this.data = data;
-
+        console.log('data:', data);
         /**
          * Name of the file (for documents)
          * @type {?string}

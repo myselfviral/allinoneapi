@@ -4,6 +4,19 @@ const axios = require('axios');
 var express    = require('express');        // call express
 var app        = express();                 // define our app using express
 var bodyParser = require('body-parser');
+const morgan = require('morgan');
+const _ = require('lodash');
+const fileUpload = require('express-fileupload');
+const cors = require('cors');
+const {MessageMedia} = require('./src/structures');
+var multer  = require('multer');
+var upload = multer({ dest: 'uploads/' });
+
+app.use(fileUpload({
+    createParentPath: true
+}));
+
+app.use(cors());
 
 const { Client, Location } = require('./index');
 
@@ -19,7 +32,7 @@ if (fs.existsSync(SESSION_FILE_PATH)) {
 // this will let us get the data from a POST
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
-
+app.use(morgan('dev'));
 var port = process.env.PORT || 8080;        // set our port
 
 // ROUTES FOR OUR API
@@ -80,16 +93,7 @@ client.on('ready', () => {
     console.log('READY');
 });
 
-router.get('/', function(req, res) {
-    client.sendMessage('919898896373@c.us', 'this is first test');
-    res.json({ message: 'hooray! welcome to our api!' });   
-});
 
-router.post('/send', function(req, res) {
-    const number = req.number.includes('@c.us') ? number : `${number}@c.us`;
-    client.sendMessage(number, req.msg);
-    res.json({ message: 'hooray! Message Sent!' });   
-});
 router.get('/init', async function(req, res) {
     
     //const client = new Client({ puppeteer: { headless: false , product: 'firefox',  args: ['-private', '-private-window'], executablePath: 'C:\\Program Files (x86)\\Mozilla Firefox\\firefox' }, session: sessionCfg });
@@ -138,13 +142,16 @@ router.get('/init', async function(req, res) {
     newClient.on('message', async msg => {
         console.log('MESSAGE RECEIVED', msg);
         // add php api for send msg object  "msg"
-        axios.post(req.body.url,msg)
-            .then(response => {
-                console.log(response.data);
-            })
-            .catch(error => {
-                console.log(error);
-            });
+        if (req.body.url) {
+            axios.post(req.body.url,msg)
+                .then(response => {
+                    console.log(response.data);
+                })
+                .catch(error => {
+                    console.log(error);
+                });
+        }
+
         if (msg.body == '!ping reply') {
         // Send a new message as a reply to the current one
             msg.reply('pong');
@@ -352,19 +359,113 @@ router.get('/init', async function(req, res) {
         console.log('Client was logged out', reason);
     });
 
-    router.get(`/${responseObj.key}`, function(req, res) {
-        newClient.sendMessage('919898896373@c.us', 'this is first test');
-        res.json({ message: 'hooray! welcome to our api!' });   
-    });
-
-    router.post(`/${responseObj.key}/send`, function(req, res) {
+    router.post(`/${responseObj.key}/send`, async function(req, res) {
         console.log('reqest ', req);
-        const number = req.body.number.includes('@c.us') ? number : `${number}@c.us`;
-        client.sendMessage(number, req.body.msg);
+        const number = req.body.number.includes('@c.us') ? req.body.number : `${req.body.number}@c.us`;
+        try {
+            await newClient.sendMessage(number, req.body.msg);
+        }
+        catch(err)
+        {
+            console.log(err);
+        }
         res.json({ message: 'hooray! Message Sent!' });   
     });
+
+    router.post(`/${responseObj.key}/sendfile`,upload.single('avatar'), async (req, res) => {
+       
+        
+        function base64_encode(file) {
+            var bitmap = fs.readFileSync(file);
+            return new Buffer.from(bitmap).toString('base64');
+        }
+
+  
+        try {
+            if(!req.files) {
+                res.send({
+                    status: false,
+                    message: 'No file uploaded'
+                });
+            } else {
+                //Use the name of the input field (i.e. "avatar") to retrieve the uploaded filere
+                
+                let avatar = req.files.avatar;
+                
+                await avatar.mv('./uploads/' + avatar.name);
+                var ImageFileToSave = await base64_encode('./uploads/' + avatar.name);
+               
+                const objfile = new MessageMedia(avatar.mimetype,ImageFileToSave,avatar.name);
+                console.log(objfile);
+                newClient.sendMessage('919426278113@c.us', objfile);
+                //send response
+                res.send({
+                    status: true,
+                    message: 'File is uploaded',
+                    data: {
+                        name: avatar.name,
+                        mimetype: avatar.mimetype,
+                        size: avatar.size
+                    }
+                });
+            }
+        } catch (err) {
+            res.status(500).send(err);
+        }
+    });
+
+    router.post(`/${responseObj.key}/sendfiles`, async (req, res) => {
+       
+        
+        function base64_encode(file) {
+            var bitmap = fs.readFileSync(file);
+            return new Buffer.from(bitmap).toString('base64');
+        }
+
+  
+        try {
+            if(!req.files) {
+                res.send({
+                    status: false,
+                    message: 'No file uploaded'
+                });
+            } else {
+                let data = []; 
+                
+                //loop all files
+                _.forEach(_.keysIn(req.files.files), async (key) => {
+                    let file = req.files.files[key];
+                    //move photo to uploads directory
+                    await file.mv('./uploads/' + file.name);
+    
+                    //push file details
+                    data.push({
+                        name: file.name,
+                        mimetype: file.mimetype,
+                        size: file.size
+                    });
+
+
+                    var ImageFileToSave = await base64_encode('./uploads/' + file.name);
+                    const objfile = new MessageMedia(file.mimetype,ImageFileToSave,file.name);
+                    await newClient.sendMessage('919426278113@c.us', objfile);
+
+                });
+                            
+
+                //send response
+                res.send({
+                    status: true,
+                    message: 'Files are uploaded and Sent',
+                    data: data
+                });
+            }
+        } catch (err) {
+            res.status(500).send(err);
+        }
+    });
+
     responseObj.qr= newClient.test;
-    console.log(responseObj);
     res.json(responseObj);   
 });
 client.on('message', async msg => {
