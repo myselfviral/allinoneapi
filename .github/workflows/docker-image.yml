@@ -14,9 +14,9 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
+    - name : login to docker
+      run: docker login -u ${{ secrets.DOCKER_HUB_USER }} -p ${{ secrets.DOCKER_HUB_PASSWORD }}
     - name: Build the Docker image
       run: docker build . --file Dockerfile --tag viralvariance/allinone:latest
-    - name : login to docker
-      run: docker login -u $DOCKER_HUB_USER -p $DOCKER_HUB_PASSWORD
     - name: Push Docker image 
       run: docker push viralvariance/allinone:latest
