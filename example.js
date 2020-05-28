@@ -372,9 +372,9 @@ router.get('/init', async function(req, res) {
         res.json({ message: 'hooray! Message Sent!' });   
     });
 
-    router.post(`/${responseObj.key}/sendfile`,upload.single('avatar'), async (req, res) => {
-       
-        
+    router.post(`/${responseObj.key}/sendfile`, async (req, res) => {
+        console.log('req => ', req);
+        const number = req.body.number.includes('@c.us') ? req.body.number : `${req.body.number}@c.us`;
         function base64_encode(file) {
             var bitmap = fs.readFileSync(file);
             return new Buffer.from(bitmap).toString('base64');
@@ -397,7 +397,7 @@ router.get('/init', async function(req, res) {
                
                 const objfile = new MessageMedia(avatar.mimetype,ImageFileToSave,avatar.name);
                 console.log(objfile);
-                newClient.sendMessage('919426278113@c.us', objfile);
+                newClient.sendMessage(number, objfile);
                 //send response
                 res.send({
                     status: true,
@@ -415,8 +415,8 @@ router.get('/init', async function(req, res) {
     });
 
     router.post(`/${responseObj.key}/sendfiles`, async (req, res) => {
-       
-        
+        console.log('req => ', req);
+        const number = req.body.number.includes('@c.us') ? req.body.number : `${req.body.number}@c.us`;
         function base64_encode(file) {
             var bitmap = fs.readFileSync(file);
             return new Buffer.from(bitmap).toString('base64');
@@ -448,7 +448,7 @@ router.get('/init', async function(req, res) {
 
                     var ImageFileToSave = await base64_encode('./uploads/' + file.name);
                     const objfile = new MessageMedia(file.mimetype,ImageFileToSave,file.name);
-                    await newClient.sendMessage('919426278113@c.us', objfile);
+                    await newClient.sendMessage(number, objfile);
 
                 });
                             
