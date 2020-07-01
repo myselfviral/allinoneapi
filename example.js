@@ -94,9 +94,11 @@ client.on('ready', () => {
 });
 
 
-router.get('/init', async function(req, res) {
+router.post('/init', async function(req, res) {
+    //console.log('req =>', req.body);
+   
     
-    //const client = new Client({ puppeteer: { headless: false , product: 'firefox',  args: ['-private', '-private-window'], executablePath: 'C:\\Program Files (x86)\\Mozilla Firefox\\firefox' }, session: sessionCfg });
+    //const newClient = new Client({ puppeteer: {headless: false}, session: sessionCfg });
     const newClient = new Client({ puppeteer: { args: ['--no-sandbox'],ignoreDefaultArgs: ['--disable-extensions'] }, session: sessionCfg });
     // You can use an existing session and avoid scanning a QR code by adding a "session" object to the client options.
     // This object must include WABrowserId, WASecretBundle, WAToken1 and WAToken2.
@@ -141,11 +143,19 @@ router.get('/init', async function(req, res) {
     
     newClient.on('message', async msg => {
         console.log('MESSAGE RECEIVED', msg);
+        let attachmentData;
+        if(msg.hasMedia)
+        {
+            attachmentData = await msg.downloadMedia();
+            msg.fileData = attachmentData;
+        }
+        
+        console.log('msg = >', msg);
         // add php api for send msg object  "msg"
-        if (req.body.url) {
+        if (req) {
             axios.post(req.body.url,msg)
                 .then(response => {
-                    console.log(response.data);
+                    console.log('response ',response.data);
                 })
                 .catch(error => {
                     console.log(error);
@@ -160,6 +170,7 @@ router.get('/init', async function(req, res) {
         // Send a new message to the same chat
             client.sendMessage(msg.from, 'pong');
 
+
         } else if (msg.body.startsWith('!sendto ')) {
         // Direct send a new message to specific id
             let number = msg.body.split(' ')[1];
@@ -167,6 +178,7 @@ router.get('/init', async function(req, res) {
             let message = msg.body.slice(messageIndex, msg.body.length);
             number = number.includes('@c.us') ? number : `${number}@c.us`;
             let chat = await msg.getChat();
+           
             chat.sendSeen();
             client.sendMessage(number, message);
 

@@ -6,6 +6,7 @@ const moduleRaid = require('@pedroslopez/moduleraid/moduleraid');
 const jsQR = require('jsqr');
 
 const Util = require('./util/Util');
+const InterfaceController = require('./util/InterfaceController');
 const { WhatsWebURL, UserAgent, DefaultOptions, Events, WAState } = require('./util/Constants');
 const { ExposeStore, LoadUtils } = require('./util/Injected');
 const ChatFactory = require('./factories/ChatFactory');
@@ -32,16 +33,14 @@ const { ClientInfo, Message, MessageMedia, Contact, Location, GroupNotification 
  * @fires Client#change_battery
  */
 class Client extends EventEmitter {
-    
     constructor(options = {}) {
         super();
 
         this.options = Util.mergeDefault(DefaultOptions, options);
 
         this.pupBrowser = null;
-        this.pupPage;
+        this.pupPage = null;
         this.test = null;
-        
     }
     async getQrCode() {
         // Check if retry button is present
@@ -67,20 +66,22 @@ class Client extends EventEmitter {
         this.emit(Events.QR_RECEIVED, qr);
     }
 
-    /**
-     * Sets up events and requirements, kicks off authentication request
-     */
     async preInitialize() {
         const browser = await puppeteer.launch(this.options.puppeteer);
         /*  const newContext = await browser.createIncognitoBrowserContext();
         console.info(newContext.isIncognito()); // True */
+       
         this.pupPage = (await browser.pages())[0];
+       
         this.pupPage.setUserAgent(UserAgent);
-
         this.pupBrowser = browser;
         //this.pupPage = page;
         
-        await  this.pupPage.goto(WhatsWebURL);
+        //await  this.pupPage.goto(WhatsWebURL);
+        await this.pupPage.goto(WhatsWebURL, {
+            waitUntil: 'load',
+            timeout: 0,
+        });
 
         //const KEEP_PHONE_CONNECTED_IMG_SELECTOR = '[data-asset-intro-image="true"]';
         
@@ -94,17 +95,46 @@ class Client extends EventEmitter {
         
         
     }
-
+    /**
+     * Sets up events and requirements, kicks off authentication request
+     */
     async initialize() {
-    
-        const KEEP_PHONE_CONNECTED_IMG_SELECTOR = '[data-asset-intro-image="true"]';
+        const KEEP_PHONE_CONNECTED_IMG_SELECTOR = '[data-asset-intro-image-light="true"]';
 
+        if (this.options.session) {
+            // Check if session restore was successfull 
+            try {
+                await this.pupPage.waitForSelector(KEEP_PHONE_CONNECTED_IMG_SELECTOR, { timeout: this.options.authTimeoutMs });
+            } catch (err) {
+                if (err.name === 'TimeoutError') {
+                    /**
+                     * Emitted when there has been an error while trying to restore an existing session
+                     * @event Client#auth_failure
+                     * @param {string} message
+                     */
+                    this.emit(Events.AUTHENTICATION_FAILURE, 'Unable to log in. Are the session details valid?');
+                    this.pupBrowser.close();
+                    if (this.options.restartOnAuthFail) {
+                        // session restore failed so try again but without session to force new authentication
+                        this.options.session = null;
+                        this.initialize();
+                    }
+                    return;
+                }
 
-        let retryInterval = setInterval(this.getQrCode, this.options.qrRefreshIntervalMs);
+                throw err;
+            }
 
-        // Wait for code scan
-        await this.pupPage.waitForSelector(KEEP_PHONE_CONNECTED_IMG_SELECTOR, { timeout: 0 });
-        clearInterval(retryInterval);
+        } else {
+
+            // this._qrRefreshInterval = setInterval(this.getQrCode, this.options.qrRefreshIntervalMs);
+
+            // Wait for code scan
+            await this.pupPage.waitForSelector(KEEP_PHONE_CONNECTED_IMG_SELECTOR, { timeout: 0 });
+            clearInterval(this._qrRefreshInterval);
+            this._qrRefreshInterval = undefined;
+
+        }
 
         await this.pupPage.evaluate(ExposeStore, moduleRaid.toString());
 
@@ -137,6 +167,9 @@ class Client extends EventEmitter {
         this.info = new ClientInfo(this, await this.pupPage.evaluate(() => {
             return window.Store.Conn.serialize();
         }));
+
+        // Add InterfaceController
+        this.interface = new InterfaceController(this);
 
         // Register events
         await this.pupPage.exposeFunction('onAddMessageEvent', msg => {
@@ -329,7 +362,19 @@ class Client extends EventEmitter {
      * Closes the client
      */
     async destroy() {
+        if (this._qrRefreshInterval) {
+            clearInterval(this._qrRefreshInterval);
+        }
         await this.pupBrowser.close();
+    }
+
+    /**
+     * Logs out the client, closing the current session
+     */
+    async logout() {
+        return await this.pupPage.evaluate(() => {
+            return window.Store.AppState.logout();
+        });
     }
 
     /**
@@ -380,38 +425,21 @@ class Client extends EventEmitter {
         } else if (options.media instanceof MessageMedia) {
             internalOptions.attachment = options.media;
             internalOptions.caption = content;
+            content = '';
         } else if (content instanceof Location) {
             internalOptions.location = content;
             content = '';
         }
 
         const newMessage = await this.pupPage.evaluate(async (chatId, message, options, sendSeen) => {
-            let chat = window.Store.Chat.get(chatId);
-            let msg;
-            if (!chat) { // The chat is not available in the previously chatted list
+            const chatWid = window.Store.WidFactory.createWid(chatId);
+            const chat = await window.Store.Chat.find(chatWid);
 
-                let newChatId = await window.WWebJS.getNumberId(chatId);
-                if (newChatId) {
-                    //get the topmost chat object and assign the new chatId to it . 
-                    //This is just a workaround.May cause problem if there are no chats at all. Need to dig in and emulate how whatsapp web does
-                    let chat = window.Store.Chat.models[0];
-                    if (!chat)
-                        throw 'Chat List empty! Need at least one open conversation with any of your contact';
-
-                    let originalChatObjId = chat.id;
-                    chat.id = newChatId;
-
-                    msg = await window.WWebJS.sendMessage(chat, message, options);
-                    chat.id = originalChatObjId; //replace the chat with its original id
-                }
+            if(sendSeen) {
+                window.WWebJS.sendSeen(chatId);
             }
-            else {
-                if(sendSeen) {
-                    window.WWebJS.sendSeen(chatId);
-                }
-                
-                msg = await window.WWebJS.sendMessage(chat, message, options, sendSeen);
-            }
+
+            const msg = await window.WWebJS.sendMessage(chat, message, options, sendSeen);
             return msg.serialize();
         }, chatId, content, internalOptions, sendSeen);
 
@@ -466,6 +494,17 @@ class Client extends EventEmitter {
         }, contactId);
 
         return ContactFactory.create(this, contact);
+    }
+
+    /**
+     * Returns an object with information about the invite code's group
+     * @param {string} inviteCode 
+     * @returns {Promise<object>} Invite information
+     */
+    async getInviteInfo(inviteCode) {
+        return await this.pupPage.evaluate(inviteCode => {
+            return window.Store.Wap.groupInviteInfo(inviteCode);
+        }, inviteCode);
     }
 
     /**
@@ -533,6 +572,29 @@ class Client extends EventEmitter {
         }, chatId);
     }
 
+    /**
+     * Mutes the Chat until a specified date
+     * @param {string} chatId ID of the chat that will be muted
+     * @param {Date} unmuteDate Date when the chat will be unmuted
+     */
+    async muteChat(chatId, unmuteDate) {
+        await this.pupPage.evaluate(async (chatId, timestamp) => {
+            let chat = await window.Store.Chat.get(chatId);
+            await chat.mute.mute(timestamp, !0);
+        }, chatId, unmuteDate.getTime() / 1000);
+    }
+    
+    /**
+     * Unmutes the Chat
+     * @param {string} chatId ID of the chat that will be unmuted
+     */
+    async unmuteChat(chatId) {
+        await this.pupPage.evaluate(async chatId => {
+            let chat = await window.Store.Chat.get(chatId);
+            await window.Store.Cmd.muteChat(chat, false);
+        }, chatId);
+    }
+    
     /**
      * Returns the contact ID's profile picture URL, if privacy settings allow it
      * @param {string} contactId the whatsapp user's ID

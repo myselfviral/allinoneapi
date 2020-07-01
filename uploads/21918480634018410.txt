@@ -1,0 +1,6 @@
+Feed Processing Summary:
+	Number of records processed		10
+	Number of records successful		9
+
+original-record-number	order-id	order-item-id	error-code	error-type	error-message
+3	171-2116164-5853109		610008	Error	Selected slot is no longer available. Please try again with different slot.
