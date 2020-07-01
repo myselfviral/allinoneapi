@@ -19,6 +19,7 @@ app.use(fileUpload({
 app.use(cors());
 
 const { Client, Location } = require('./index');
+const { default: Axios } = require('axios');
 
 const SESSION_FILE_PATH = './session.json';
 const responseObj = {};
@@ -384,7 +385,6 @@ router.post('/init', async function(req, res) {
         }
         res.json({ message: 'hooray! Message Sent!' });   
     });
-
     router.post(`/${responseObj.key}/sendfile`, async (req, res) => {
         console.log('req => ', req);
         const number = req.body.number.includes('@c.us') ? req.body.number : `${req.body.number}@c.us`;
@@ -403,7 +403,11 @@ router.post('/init', async function(req, res) {
             } else {
                 //Use the name of the input field (i.e. "avatar") to retrieve the uploaded filere
                 
+                
+
                 let avatar = req.files.avatar;
+
+                
                 
                 await avatar.mv('./uploads/' + avatar.name);
                 var ImageFileToSave = await base64_encode('./uploads/' + avatar.name);
@@ -421,6 +425,48 @@ router.post('/init', async function(req, res) {
                         size: avatar.size
                     }
                 });
+            }
+        } catch (err) {
+            res.status(500).send(err);
+        }
+    });
+    router.post(`/${responseObj.key}/sendfileurl`, async (req, res) => {
+        //  console.log('req => ', req);
+        const number = req.body.number.includes('@c.us') ? req.body.number : `${req.body.number}@c.us`;
+             
+  
+        try {
+            if(!req.body.url) {
+                res.send({
+                    status: false,
+                    message: 'No url found'
+                });
+            } else {
+                //Use the name of the input field (i.e. "avatar") to retrieve the uploaded filere
+
+                axios.get(req.body.url,{
+                    responseType: 'arraybuffer'
+                }).then(resp => {
+                    console.log('viral test => ',Buffer.from(resp.data, 'binary').toString('base64'));
+                    console.log('viral test => ',resp.headers['content-type']);
+                    console.log('viral test => ',req.body.url.substring(req.body.url.lastIndexOf('/')+1));
+                    
+                    const objfile = new MessageMedia(resp.headers['content-type'],Buffer.from(resp.data, 'binary').toString('base64'),req.body.url.substring(req.body.url.lastIndexOf('/')+1));
+                    //console.log(objfile);
+                    newClient.sendMessage(number, objfile);
+                    //send response
+                    res.send({
+                        status: true,
+                        message: 'File is uploaded',
+                        data: {
+                            name: req.body.url.substring(req.body.url.lastIndexOf('/')+1),
+                            mimetype: resp.headers['content-type'],
+                            size: resp.headers['content-length']
+                        }
+                    });
+                });
+               
+               
             }
         } catch (err) {
             res.status(500).send(err);
