@@ -56,7 +56,7 @@ app.listen(port);
 console.log('Magic happens on port ' + port);
 
 
-
+/* 
 //const client = new Client({ puppeteer: { headless: false , product: 'firefox',  args: ['-private', '-private-window'], executablePath: 'C:\\Program Files (x86)\\Mozilla Firefox\\firefox' }, session: sessionCfg });
 const client = new Client({ puppeteer: {args: ['--no-sandbox'], ignoreDefaultArgs: ['--disable-extensions'] }, session: sessionCfg });
 // You can use an existing session and avoid scanning a QR code by adding a "session" object to the client options.
@@ -92,7 +92,7 @@ client.on('auth_failure', msg => {
 
 client.on('ready', () => {
     console.log('READY');
-});
+}); */
 
 
 router.post('/init', async function(req, res) {
@@ -157,6 +157,7 @@ router.post('/init', async function(req, res) {
         if (req) {
             axios.post(req.body.url,msg)
                 .then(response => {
+                    console.log('REQ URL ',req.body.url);
                     console.log('response ',response.data);
                 })
                 .catch(error => {
@@ -170,7 +171,7 @@ router.post('/init', async function(req, res) {
 
         } else if (msg.body == '!ping') {
         // Send a new message to the same chat
-            client.sendMessage(msg.from, 'pong');
+            newClient.sendMessage(msg.from, 'pong');
 
 
         } else if (msg.body.startsWith('!sendto ')) {
@@ -182,7 +183,7 @@ router.post('/init', async function(req, res) {
             let chat = await msg.getChat();
            
             chat.sendSeen();
-            client.sendMessage(number, message);
+            newClient.sendMessage(number, message);
 
         } else if (msg.body.startsWith('!subject ')) {
         // Change the group subject
@@ -216,7 +217,7 @@ router.post('/init', async function(req, res) {
         } else if (msg.body.startsWith('!join ')) {
             const inviteCode = msg.body.split(' ')[1];
             try {
-                await client.acceptInvite(inviteCode);
+                await newClient.acceptInvite(inviteCode);
                 msg.reply('Joined the group!');
             } catch (e) {
                 msg.reply('That invite code seems to be invalid.');
@@ -236,11 +237,11 @@ router.post('/init', async function(req, res) {
                 msg.reply('This command can only be used in a group!');
             }
         } else if (msg.body == '!chats') {
-            const chats = await client.getChats();
-            client.sendMessage(msg.from, `The bot has ${chats.length} chats open.`);
+            const chats = await newClient.getChats();
+            newClient.sendMessage(msg.from, `The bot has ${chats.length} chats open.`);
         } else if (msg.body == '!info') {
-            let info = client.info;
-            client.sendMessage(msg.from, `
+            let info = newClient.info;
+            newClient.sendMessage(msg.from, `
             *Connection info*
             User name: ${info.pushname}
             My number: ${info.me.user}
@@ -269,7 +270,7 @@ router.post('/init', async function(req, res) {
             const quotedMsg = await msg.getQuotedMessage();
             if (quotedMsg.hasMedia) {
                 const attachmentData = await quotedMsg.downloadMedia();
-                client.sendMessage(msg.from, attachmentData, { caption: 'Here\'s your requested media.' });
+                newClient.sendMessage(msg.from, attachmentData, { caption: 'Here\'s your requested media.' });
             }
         } else if (msg.body == '!location') {
             msg.reply(new Location(37.422, -122.084, 'Googleplex\nGoogle Headquarters'));
@@ -277,7 +278,7 @@ router.post('/init', async function(req, res) {
             msg.reply(msg.location);
         } else if (msg.body.startsWith('!status ')) {
             const newStatus = msg.body.split(' ')[1];
-            await client.setStatus(newStatus);
+            await newClient.setStatus(newStatus);
             msg.reply(`Status was updated to *${newStatus}*`);
         } else if (msg.body == '!mention') {
             const contact = await msg.getContact();
@@ -526,7 +527,7 @@ router.post('/init', async function(req, res) {
 
     responseObj.qr= newClient.test;
     res.json(responseObj);   
-});
+});/* 
 client.on('message', async msg => {
     console.log('MESSAGE RECEIVED', msg);
     // add php api for send msg object  "msg"
@@ -703,7 +704,7 @@ client.on('message_ack', (msg, ack) => {
         ACK_DEVICE: 2
         ACK_READ: 3
         ACK_PLAYED: 4
-    */
+    
 
     if(ack == 3) {
         // The message was read
@@ -737,3 +738,4 @@ client.on('disconnected', (reason) => {
     console.log('Client was logged out', reason);
 });
 
+ */
