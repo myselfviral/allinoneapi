@@ -89,9 +89,9 @@ router.post('/init', async function(req, res) {
                         responseObj.qr = qr;
 
                         if (req.body.statusurl) {
-                            axios.post(req.body.statusurl,'NEWQR:'+ qr)
+                            axios.post(req.body.statusurl, { message: 'New QR Generated',value:qr }  )
                                 .then(response => {
-                                    console.log('REQ URL ',req.body.url);
+                                    console.log('REQ URL ',req.body.statusurl);
                                     console.log('response ',response.data);
                                 })
                                 .catch(error => {
@@ -115,9 +115,9 @@ router.post('/init', async function(req, res) {
                         // Fired if session restore was unsuccessfull
                         console.error('AUTHENTICATION FAILURE', msg);
                         if (req.body.statusurl) {
-                            axios.post(req.body.statusurl,'AUTHENTICATION FAILURE : ' + msg)
+                            axios.post(req.body.statusurl,{ message: 'Authentication Fail',value:msg })
                                 .then(response => {
-                                    console.log('REQ URL ',req.body.url);
+                                    console.log('REQ URL ',req.body.statusurl);
                                     console.log('response ',response.data);
                                 })
                                 .catch(error => {
@@ -129,9 +129,9 @@ router.post('/init', async function(req, res) {
                     newClient.on('ready', () => {
                         console.log('new READY');
                         if (req.body.statusurl) {
-                            axios.post(req.body.statusurl,'Status : Connected')
+                            axios.post(req.body.statusurl, { message: 'Status Connected',value:'Connected' })
                                 .then(response => {
-                                    console.log('REQ URL ',req.body.url);
+                                    console.log('REQ URL ',req.body.statusurl);
                                     console.log('response ',response.data);
                                 })
                                 .catch(error => {
@@ -371,9 +371,9 @@ router.post('/init', async function(req, res) {
                     newClient.on('disconnected', (reason) => {
                         console.log('Client was logged out', reason);
                         if (req.body.statusurl) {
-                            axios.post(req.body.statusurl,'Status : disconnected')
+                            axios.post(req.body.statusurl, { message: 'Status Disconnected',value:'disconnected' })
                                 .then(response => {
-                                    console.log('REQ URL ',req.body.url);
+                                    console.log('REQ URL ',req.body.statusurl);
                                     console.log('response ',response.data);
                                 })
                                 .catch(error => {
@@ -537,7 +537,18 @@ router.post('/init', async function(req, res) {
 
                     router.get(`/${responseObj.key}/disconnect`, async function(req, res) {
                         try {
+                            await newClient.logout();
                             await newClient.destroy();
+                            if (req.body.statusurl) {
+                                axios.post(req.body.statusurl, { message: 'Status Disconnected',value:'disconnected' })
+                                    .then(response => {
+                                        console.log('REQ URL ',req.body.url);
+                                        console.log('response ',response.data);
+                                    })
+                                    .catch(error => {
+                                        console.log(error);
+                                    });
+                            }
                         }
                         catch(err)
                         {

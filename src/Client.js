@@ -294,7 +294,7 @@ class Client extends EventEmitter {
         });
 
         await this.pupPage.exposeFunction('onAppStateChangedEvent', (state) => {
-
+            
             /**
              * Emitted when the connection state changes
              * @event Client#change_state
