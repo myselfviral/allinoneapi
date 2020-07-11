@@ -535,7 +535,7 @@ router.post('/init', async function(req, res) {
                         }
                     });
 
-                    router.get(`/${responseObj.key}/disconnect`, async function(req, res) {
+                    router.post(`/${responseObj.key}/disconnect`, async function(req, res) {
                         try {
                             await newClient.logout();
                             await newClient.destroy();
