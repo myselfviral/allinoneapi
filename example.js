@@ -20,6 +20,7 @@ app.use(cors());
 
 const { Client, Location } = require('./index');
 const { default: Axios } = require('axios');
+const { forEach } = require('lodash');
 
 const SESSION_FILE_PATH = './session.json';
 const responseObj = {};
@@ -34,7 +35,7 @@ if (fs.existsSync(SESSION_FILE_PATH)) {
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(morgan('dev'));
-var port = process.env.PORT || 8080;        // set our port
+var port = process.env.PORT || 80;        // set our port
 
 // ROUTES FOR OUR API
 // =============================================================================
@@ -126,7 +127,7 @@ router.post('/init', async function(req, res) {
                         }
                     });
 
-                    newClient.on('ready', () => {
+                    newClient.on('ready',  () => {
                         console.log('new READY');
                         if (req.body.statusurl) {
                             axios.post(req.body.statusurl, { message: 'Status Connected',value:'Connected' })
@@ -137,6 +138,16 @@ router.post('/init', async function(req, res) {
                                 .catch(error => {
                                     console.log(error);
                                 });
+
+
+                            /* const lstchat = await newClient.getChats();
+                            lstchat.forEach(element => { 
+                                
+                                const msg = element.fetchMessages();
+                                console.log('chatmsg', msg);
+                                
+                            }); */
+                         
                         }
                     });
 
@@ -556,6 +567,25 @@ router.post('/init', async function(req, res) {
                         }
                         res.json({ message: 'You are Disconnected from Whatsapp API.' });   
                     });
+
+                    router.post(`/${responseObj.key}/chatlist`, async function(req, res) {
+                        console.log('reqest ', req.body);
+                        const number = req.body.number.includes('@c.us') ? req.body.number : `${req.body.number}@c.us`;
+                        try {
+                            const lstchat = await newClient.getChats();
+                            console.log('chats ', JSON.stringify(lstchat));
+                            //const checknumber = await newClient.isRegisteredUser(number);
+                            await newClient.sendMessage(number, req.body.msg);
+                            res.json (JSON.stringify(lstchat));  
+                        }
+                        catch(err)
+                        {
+                            console.log(err);
+                            res.json({ message: err.message });  
+                        }
+                            
+                    });
+
                     responseObj.qr= newClient.test;
                     res.json(responseObj);  
                 }
