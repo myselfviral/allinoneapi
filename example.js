@@ -1,6 +1,7 @@
 const fs = require('fs');
 const axios = require('axios');
 // call the packages we need
+var https = require('https')
 var express    = require('express');        // call express
 var app        = express();                 // define our app using express
 var bodyParser = require('body-parser');
@@ -17,6 +18,14 @@ app.use(fileUpload({
 }));
 
 app.use(cors());
+
+https.createServer({
+    key: fs.readFileSync('/root/ssl/crmtiger.key'),
+    cert: fs.readFileSync('/root/ssl/STAR_crmtiger_com.crt')
+  }, app)
+  .listen(443, function () {
+    console.log('Example app listening on port 443! Go to https://wa.crmtiger.com:443/')
+  })
 
 const { Client, Location } = require('./index');
 const { default: Axios } = require('axios');
