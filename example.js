@@ -79,14 +79,14 @@ typeorm.createConnection().then(async function (connection) {
         sessionsRepository.find({ isActive : 1 }).then( values => {
         values.forEach(async value => {
 
-            const Client = new Client({ puppeteer: {headless: false}, session: value.session });
-            //  const Client = new Client({ puppeteer: {args: ['--no-sandbox'],ignoreDefaultArgs: ['--disable-extensions'] }, session: sessionCfg });
+            //const nClient = new Client({ puppeteer: {headless: false}, session: value.session });
+              const nClient = new Client({ puppeteer: {args: ['--no-sandbox'],ignoreDefaultArgs: ['--disable-extensions'] }, session: sessionCfg });
               // You can use an existing session and avoid scanning a QR code by adding a "session" object to the client options.
               // This object must include WABrowserId, WASecretBundle, WAToken1 and WAToken2.
               try {
-                  await Client.preInitialize().then(() => {
+                  await nClient.preInitialize().then(() => {
                           
-                      Client.initialize();
+                      nClient.initialize();
                   });
                       
               } catch (error) 
@@ -95,7 +95,7 @@ typeorm.createConnection().then(async function (connection) {
               }
               responseObj.key= value.apikey;
       
-              Client.on('qr', (qr) => {
+              nClient.on('qr', (qr) => {
                   // NOTE: This event will not be fired if a session is specified.
                   console.log('new QR RECEIVED ', qr);
                   responseObj.qr = qr;
@@ -112,7 +112,7 @@ typeorm.createConnection().then(async function (connection) {
                   }
               });
       
-              Client.on('authenticated', async (session) => {
+              nClient.on('authenticated', async (session) => {
                   console.log('AUTHENTICATED', session);
                   sessionCfg=session;
                   responseObj.number = session.number;
@@ -123,7 +123,7 @@ typeorm.createConnection().then(async function (connection) {
                   await sessionsRepository.save(sesobj).then(values => { AllObj.CSession = values }); 
               });
       
-              Client.on('auth_failure', msg => {
+              nClient.on('auth_failure', msg => {
                   // Fired if session restore was unsuccessfull
                   console.error('AUTHENTICATION FAILURE', msg);
                   if (value.statusurl) {
@@ -141,7 +141,7 @@ typeorm.createConnection().then(async function (connection) {
                   }
               });
       
-              Client.on('ready',  () => {
+              nClient.on('ready',  () => {
                   console.log('new READY');
                   if (value.statusurl) {
                       axios.post(value.statusurl, { message: 'Status Connected',value:'Connected' })
@@ -156,7 +156,7 @@ typeorm.createConnection().then(async function (connection) {
               });
       
                   
-              Client.on('message', async msg => {
+              nClient.on('message', async msg => {
                   console.log('MESSAGE RECEIVED', msg);
                   let attachmentData;
                   if(msg.hasMedia)
@@ -184,7 +184,7 @@ typeorm.createConnection().then(async function (connection) {
       
                   } else if (msg.body == '!ping') {
                       // Send a new message to the same chat
-                      Client.sendMessage(msg.from, 'pong');
+                      nClient.sendMessage(msg.from, 'pong');
       
       
                   } else if (msg.body.startsWith('!sendto ')) {
@@ -196,7 +196,7 @@ typeorm.createConnection().then(async function (connection) {
                       let chat = await msg.getChat();
                       
                       chat.sendSeen();
-                      Client.sendMessage(number, message);
+                      nClient.sendMessage(number, message);
       
                   } else if (msg.body.startsWith('!subject ')) {
                       // Change the group subject
@@ -230,7 +230,7 @@ typeorm.createConnection().then(async function (connection) {
                   } else if (msg.body.startsWith('!join ')) {
                       const inviteCode = msg.body.split(' ')[1];
                       try {
-                          await Client.acceptInvite(inviteCode);
+                          await nClient.acceptInvite(inviteCode);
                           msg.reply('Joined the group!');
                       } catch (e) {
                           msg.reply('That invite code seems to be invalid.');
@@ -250,11 +250,11 @@ typeorm.createConnection().then(async function (connection) {
                           msg.reply('This command can only be used in a group!');
                       }
                   } else if (msg.body == '!chats') {
-                      const chats = await Client.getChats();
-                      Client.sendMessage(msg.from, `The bot has ${chats.length} chats open.`);
+                      const chats = await nClient.getChats();
+                      nClient.sendMessage(msg.from, `The bot has ${chats.length} chats open.`);
                   } else if (msg.body == '!info') {
-                      let info = Client.info;
-                      Client.sendMessage(msg.from, `
+                      let info = nClient.info;
+                      nClient.sendMessage(msg.from, `
                           *Connection info*
                           User name: ${info.pushname}
                           My number: ${info.me.user}
@@ -283,7 +283,7 @@ typeorm.createConnection().then(async function (connection) {
                       const quotedMsg = await msg.getQuotedMessage();
                       if (quotedMsg.hasMedia) {
                           const attachmentData = await quotedMsg.downloadMedia();
-                          Client.sendMessage(msg.from, attachmentData,{ caption: 'Here\'s your requested media.' });
+                          nClient.sendMessage(msg.from, attachmentData,{ caption: 'Here\'s your requested media.' });
                       }
                   } else if (msg.body == '!location') {
                       msg.reply(new Location(37.422, -122.084, 'Googleplex\nGoogle Headquarters'));
@@ -291,7 +291,7 @@ typeorm.createConnection().then(async function (connection) {
                       msg.reply(msg.location);
                   } else if (msg.body.startsWith('!status ')) {
                       const newStatus = msg.body.split(' ')[1];
-                      await Client.setStatus(newStatus);
+                      await nClient.setStatus(newStatus);
                       msg.reply(`Status was updated to *${newStatus}*`);
                   } else if (msg.body == '!mention') {
                       const contact = await msg.getContact();
@@ -324,14 +324,14 @@ typeorm.createConnection().then(async function (connection) {
                   }
               });
       
-              Client.on('message_create', (msg) => {
+              nClient.on('message_create', (msg) => {
                   // Fired on all message creations, including your own
                   if (msg.fromMe) {
                       // do stuff here
                   }
               });
       
-              Client.on('message_revoke_everyone', async (after, before) => {
+              nClient.on('message_revoke_everyone', async (after, before) => {
                   // Fired whenever a message is deleted by anyone (including you)
                   console.log(after); // message after it was deleted.
                   if (before) {
@@ -339,12 +339,12 @@ typeorm.createConnection().then(async function (connection) {
                   }
               });
       
-              Client.on('message_revoke_me', async (msg) => {
+              nClient.on('message_revoke_me', async (msg) => {
                   // Fired whenever a message is only deleted in your own view.
                   console.log(msg.body); // message before it was deleted.
               });
       
-              Client.on('message_ack', (msg, ack) => {
+              nClient.on('message_ack', (msg, ack) => {
                   /*
                       == ACK VALUES ==
                       ACK_ERROR: -1
@@ -373,29 +373,29 @@ typeorm.createConnection().then(async function (connection) {
                   }
               });
       
-              Client.on('group_join', (notification) => {
+              nClient.on('group_join', (notification) => {
                   // User has joined or been added to the group.
                   console.log('join', notification);
                 //  notification.reply('User joined.');
               });
       
-              Client.on('group_leave', (notification) => {
+              nClient.on('group_leave', (notification) => {
                   // User has left or been kicked from the group.
                   console.log('leave', notification);
                  // notification.reply('User left.');
               });
       
-              Client.on('group_update', (notification) => {
+              nClient.on('group_update', (notification) => {
                   // Group picture, subject or description has been updated.
                   console.log('update', notification);
               });
       
-              Client.on('change_battery', (batteryInfo) => {
+              nClient.on('change_battery', (batteryInfo) => {
                   // Battery percentage for attached device has changed
                   const { battery, plugged } = batteryInfo;
                   console.log(`Battery: ${battery}% - Charging? ${plugged}`);
               });
-              Client.on('change_state', (state) => {
+              nClient.on('change_state', (state) => {
                 if (value.statusurl) {
                     axios.post(value.statusurl, { message: 'Status changed',value:state })
                         .then(response => {
@@ -410,8 +410,8 @@ typeorm.createConnection().then(async function (connection) {
                 console.log(`State : ${state}`);
             });
       
-              Client.on('disconnected', (reason) => {
-                  console.log('Client was logged out', reason);
+              nClient.on('disconnected', (reason) => {
+                  console.log('nClient was logged out', reason);
                   if (value.statusurl) {
                       axios.post(value.statusurl, { message: 'Status Disconnected',value:'disconnected' })
                           .then(response => {
@@ -436,11 +436,11 @@ typeorm.createConnection().then(async function (connection) {
                   const number = req.body.number.includes('@c.us') ? req.body.number : `${req.body.number}@c.us`;
                   try {
                     
-                    const  stat =  await Client.getState();
+                    const  stat =  await nClient.getState();
                     console.log('state ' , stat);
                     if(stat == 'CONNECTED')
                     {
-                        const sentmsg =  Client.sendMessage(number, req.body.msg);
+                        const sentmsg =  nClient.sendMessage(number, req.body.msg);
                         res.json(sentmsg);  
                       
                     }
@@ -485,7 +485,7 @@ typeorm.createConnection().then(async function (connection) {
                           
                           const objfile = new MessageMedia(avatar.mimetype,ImageFileToSave,avatar.name);
                           console.log(objfile);
-                          Client.sendMessage(number, objfile);
+                          nClient.sendMessage(number, objfile);
                           //send response
                           res.send({
                               status: true,
@@ -520,7 +520,7 @@ typeorm.createConnection().then(async function (connection) {
                           }).then(async resp => {                                        
                               const objfile = new MessageMedia(resp.headers['content-type'],Buffer.from(resp.data, 'binary').toString('base64'),req.body.url.substring(req.body.url.lastIndexOf('/')+1));
                               //console.log(objfile);
-                              const sentmsg = await Client.sendMessage(number, objfile);
+                              const sentmsg = await nClient.sendMessage(number, objfile);
                               //console.log('sentmsg ',sentmsg );
                               //send response
                               res.send({
@@ -576,7 +576,7 @@ typeorm.createConnection().then(async function (connection) {
       
                               var ImageFileToSave = await base64_encode('./uploads/' + file.name);
                               const objfile = new MessageMedia(file.mimetype,ImageFileToSave,file.name);
-                              await Client.sendMessage(number, objfile);
+                              await nClient.sendMessage(number, objfile);
       
                           });
                                           
@@ -595,8 +595,8 @@ typeorm.createConnection().then(async function (connection) {
       
               router.post(`/${responseObj.key}/disconnect`, async function(req, res) {
                   try {
-                      await Client.logout();
-                      await Client.destroy();
+                      await nClient.logout();
+                      await nClient.destroy();
                       let sessionsRepository = connection.getRepository(Sessions);
                       const sesobj = new Sessions(AllObj.CSession.id,AllObj.CSession.session,AllObj.CSession.session.number,responseObj.key,0,value.url,value.licenceKey,value.statusurl);
                       sessionsRepository.save(sesobj).then(values => { AllObj.CSession = values });
@@ -622,7 +622,7 @@ typeorm.createConnection().then(async function (connection) {
                   console.log('reqest ', req.body);
                   const number = req.body.number.includes('@c.us') ? req.body.number : `${req.body.number}@c.us`;
                   try {
-                      const lstchat = await Client.getChats();
+                      const lstchat = await nClient.getChats();
                       res.json (JSON.stringify(lstchat));  
                   }
                   catch(err)
@@ -636,7 +636,7 @@ typeorm.createConnection().then(async function (connection) {
               router.post(`/${responseObj.key}/contactlist`, async function(req, res) {
                   console.log('reqest ', req.body);
                   try {
-                      const lstcontact = await Client.getContacts();
+                      const lstcontact = await nClient.getContacts();
                       console.log('contacts ', JSON.stringify(lstcontact));
                       res.json (lstcontact);  
                   }
@@ -652,7 +652,7 @@ typeorm.createConnection().then(async function (connection) {
                   console.log('history reqest ', req.body);
                   try {
                       const number = req.body.number.includes('@c.us') ? req.body.number : `${req.body.number}@c.us`;
-                      const chat = await Client.getChatById(number);
+                      const chat = await nClient.getChatById(number);
                       const messages = await chat.fetchMessages(req.body)
                       
                       res.json (messages);  
@@ -699,8 +699,8 @@ router.post('/init', async function(req, res) {
                 console.log('response ',response.data);
                 // eslint-disable-next-line no-empty
                 if(response.data.message== 'Valid') {
-                    const newClient = new Client({ puppeteer: {headless: false}, session: sessionCfg });
-                  //  const newClient = new Client({ puppeteer: {args: ['--no-sandbox'],ignoreDefaultArgs: ['--disable-extensions'] }, session: sessionCfg });
+                  //  const newClient = new Client({ puppeteer: {headless: false}, session: sessionCfg });
+                    const newClient = new Client({ puppeteer: {args: ['--no-sandbox'],ignoreDefaultArgs: ['--disable-extensions'] }, session: sessionCfg });
                     // You can use an existing session and avoid scanning a QR code by adding a "session" object to the client options.
                     // This object must include WABrowserId, WASecretBundle, WAToken1 and WAToken2.
                     try {
