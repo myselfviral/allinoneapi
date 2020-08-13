@@ -76,6 +76,17 @@ class Client extends EventEmitter {
         this.pupPage.setUserAgent(UserAgent);
         this.pupBrowser = browser;
         //this.pupPage = page;
+
+        if (this.options.session) {
+            await this.pupPage.evaluateOnNewDocument(
+                session => {
+                    localStorage.clear();
+                    localStorage.setItem('WABrowserId', session.WABrowserId);
+                    localStorage.setItem('WASecretBundle', session.WASecretBundle);
+                    localStorage.setItem('WAToken1', session.WAToken1);
+                    localStorage.setItem('WAToken2', session.WAToken2);
+                }, this.options.session);
+        } 
         
         //await  this.pupPage.goto(WhatsWebURL);
         await this.pupPage.goto(WhatsWebURL, {
@@ -84,8 +95,9 @@ class Client extends EventEmitter {
         });
 
         //const KEEP_PHONE_CONNECTED_IMG_SELECTOR = '[data-asset-intro-image="true"]';
-        
-        await this.getQrCode();
+        if (!this.options.session) {
+            await this.getQrCode();
+        }
         /* let retryInterval = setInterval(this.getQrCode, this.options.qrRefreshIntervalMs);
 
         // Wait for code scan
@@ -143,19 +155,7 @@ class Client extends EventEmitter {
             return JSON.stringify(window.localStorage);
         }));
 
-        const session = {
-            WABrowserId: localStorage.WABrowserId,
-            WASecretBundle: localStorage.WASecretBundle,
-            WAToken1: localStorage.WAToken1,
-            WAToken2: localStorage.WAToken2
-        };
-
-        /**
-         * Emitted when authentication is successful
-         * @event Client#authenticated
-         * @param {object} session Object containing session information. Can be used to restore the session.
-         */
-        this.emit(Events.AUTHENTICATED, session);
+       
 
         // Check window.Store Injection
         await this.pupPage.waitForFunction('window.Store != undefined');
@@ -167,6 +167,23 @@ class Client extends EventEmitter {
         this.info = new ClientInfo(this, await this.pupPage.evaluate(() => {
             return window.Store.Conn.serialize();
         }));
+        console.log('info =>',this.info);
+
+        const session = {
+            WABrowserId: localStorage.WABrowserId,
+            WASecretBundle: localStorage.WASecretBundle,
+            WAToken1: localStorage.WAToken1,
+            WAToken2: localStorage.WAToken2,
+            name: this.info.pushname,
+            number: this.info.me.user
+        };
+
+        /**
+         * Emitted when authentication is successful
+         * @event Client#authenticated
+         * @param {object} session Object containing session information. Can be used to restore the session.
+         */
+        this.emit(Events.AUTHENTICATED, session);
 
         // Add InterfaceController
         this.interface = new InterfaceController(this);
