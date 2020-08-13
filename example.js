@@ -80,7 +80,7 @@ typeorm.createConnection().then(async function (connection) {
         values.forEach(async value => {
 
             //const nClient = new Client({ puppeteer: {headless: false}, session: value.session });
-              const nClient = new Client({ puppeteer: {args: ['--no-sandbox'],ignoreDefaultArgs: ['--disable-extensions'] }, session: sessionCfg });
+              const nClient = new Client({ puppeteer: {args: ['--no-sandbox'],ignoreDefaultArgs: ['--disable-extensions'] }, session: value.session });
               // You can use an existing session and avoid scanning a QR code by adding a "session" object to the client options.
               // This object must include WABrowserId, WASecretBundle, WAToken1 and WAToken2.
               try {
@@ -440,7 +440,7 @@ typeorm.createConnection().then(async function (connection) {
                     console.log('state ' , stat);
                     if(stat == 'CONNECTED')
                     {
-                        const sentmsg =  nClient.sendMessage(number, req.body.msg);
+                        const sentmsg =  await nClient.sendMessage(number, req.body.msg);
                         res.json(sentmsg);  
                       
                     }
