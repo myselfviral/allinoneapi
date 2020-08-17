@@ -446,7 +446,7 @@ typeorm.createConnection().then(async function (connection) {
                     }
                     else
                     {
-                        res.json({ message: 'Status changed',value:stat }); 
+                        res.json({ message: 'Phone disconnected',value:stat }); 
                     }  
                   }
                   catch(err)
@@ -1060,12 +1060,13 @@ router.post('/init', async function(req, res) {
                             if(stat =='CONNECTED')
                             {
                                 const sentmsg =  await newClient.sendMessage(number, req.body.msg);
+                                
                                 res.json(sentmsg);  
                               
                             }
                             else
                             {
-                                res.json({ message: 'Status changed',value:stat }); 
+                                res.json({ message: 'Phone disconnected',value:stat }); 
                             }  
                         }
                         catch(err)
