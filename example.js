@@ -21,13 +21,13 @@ app.use(fileUpload({
 
 app.use(cors());
 
-/* https.createServer({
+https.createServer({
     key: fs.readFileSync('/root/ssl/crmtiger.key'),
     cert: fs.readFileSync('/root/ssl/STAR_crmtiger_com.crt')
   }, app)
   .listen(443, function () {
     console.log('Example app listening on port 443! Go to https://wa.crmtiger.com:443/')
-  }) */
+  }) 
 
 const { Client, Location } = require('./index');
 const { default: Axios } = require('axios');
@@ -165,7 +165,7 @@ typeorm.createConnection().then(async function (connection) {
                       msg.fileData = attachmentData;
                   }
                       
-                  console.log('msg = >', msg);
+                  //console.log('msg = >', msg);
                   // add php api for send msg object  "msg"
                   if (value.url) {
                       axios.post(value.url,msg)
@@ -442,7 +442,6 @@ typeorm.createConnection().then(async function (connection) {
                     {
                         const sentmsg =  await nClient.sendMessage(number, req.body.msg);
                         res.json(sentmsg);  
-                      
                     }
                     else
                     {
