@@ -49,7 +49,7 @@ if (fs.existsSync(SESSION_FILE_PATH)) {
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(morgan('dev'));
-var port = process.env.PORT || 443;        // set our port
+var port = process.env.PORT || 80;        // set our port
 
 // ROUTES FOR OUR API
 // =============================================================================
