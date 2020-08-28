@@ -21,7 +21,7 @@ app.use(fileUpload({
 
 app.use(cors());
 
-https.createServer({
+ https.createServer({
     key: fs.readFileSync('/root/ssl/crmtiger.key'),
     cert: fs.readFileSync('/root/ssl/STAR_crmtiger_com.crt')
   }, app)
@@ -49,7 +49,7 @@ if (fs.existsSync(SESSION_FILE_PATH)) {
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(morgan('dev'));
-var port = process.env.PORT || 80;        // set our port
+var port = process.env.PORT || 8080;        // set our port
 
 // ROUTES FOR OUR API
 // =============================================================================
@@ -91,6 +91,7 @@ typeorm.createConnection().then(async function (connection) {
                       
               } catch (error) 
               {
+
                   console.log(error);
               }
               responseObj.key= value.apikey;
@@ -107,6 +108,8 @@ typeorm.createConnection().then(async function (connection) {
                               console.log('response ',response.data);
                           })
                           .catch(error => {
+                            const eventlogobj = new eventlog(0,'OnQR','Fail',error,null,null);
+                            eventlogRepo.save(eventlogobj);
                               console.log(error);
                           });
                   }
@@ -117,7 +120,7 @@ typeorm.createConnection().then(async function (connection) {
                   sessionCfg=session;
                   responseObj.number = session.number;
                   responseObj.name = session.name;
-                  let sessionsRepository = connection.getRepository(Sessions);
+                  //let sessionsRepository = connection.getRepository(Sessions);
                   await sessionsRepository.delete({ number: session.number }  );
                   const sesobj = new Sessions(0,session,session.number,responseObj.key,1,value.url,value.licenceKey,value.statusurl);
                   await sessionsRepository.save(sesobj).then(values => { AllObj.CSession = values }); 
@@ -131,9 +134,12 @@ typeorm.createConnection().then(async function (connection) {
                           .then(response => {
                               console.log('REQ URL ',value.statusurl);
                               console.log('response ',response.data);
-                              let sessionsRepository = connection.getRepository(Sessions);
+                              //let sessionsRepository = connection.getRepository(Sessions);
                               const sesobj = new Sessions(AllObj.CSession.id,AllObj.CSession.session,AllObj.CSession.session.number,responseObj.key,0,value.url,value.licenceKey,value.statusurl);
                               sessionsRepository.save(sesobj).then(values => { AllObj.CSession = values });
+
+                              const eventlogobj = new eventlog(0,'OnAuthFail','Fail',msg,AllObj.CSession.session.number,AllObj.CSession.session.apikey);
+                              eventlogRepo.save(eventlogobj);
                           })
                           .catch(error => {
                               console.log(error);
@@ -151,6 +157,8 @@ typeorm.createConnection().then(async function (connection) {
                           })
                           .catch(error => {
                               console.log(error);
+                              const eventlogobj = new eventlog(0,'OnREADY','Fail',error,AllObj.CSession.session.number,AllObj.CSession.session.apikey);
+                              eventlogRepo.save(eventlogobj);
                           });
                   }
               });
@@ -175,6 +183,8 @@ typeorm.createConnection().then(async function (connection) {
                           })
                           .catch(error => {
                               console.log(error);
+                              const eventlogobj = new eventlog(0,'OnMessageReceived','Fail',error,AllObj.CSession.session.number,AllObj.CSession.session.apikey);
+                              eventlogRepo.save(eventlogobj);
                           });
                   }
       
@@ -359,10 +369,10 @@ typeorm.createConnection().then(async function (connection) {
                       // The message was read
                    
                       const actmsg = { id:msg.id , ack:msg.ack }
-                      if (value.url) {
-                          axios.post(value.url,actmsg)
+                      if (value.statusurl) {
+                          axios.post(value.statusurl,actmsg)
                               .then(response => {
-                                  console.log('REQ URL ',value.url);
+                                  console.log('REQ URL ',value.statusurl);
                                   console.log('actmsg sent ',actmsg );
                               })
                               .catch(error => {
@@ -403,6 +413,8 @@ typeorm.createConnection().then(async function (connection) {
                             console.log('response ',response.data);
                         })
                         .catch(error => {
+                            const eventlogobj = new eventlog(0,'OnStatusChange','Fail',error,AllObj.CSession.session.number,AllObj.CSession.session.apikey);
+                            eventlogRepo.save(eventlogobj);
                             console.log(error);
                         });
                 }
@@ -416,7 +428,7 @@ typeorm.createConnection().then(async function (connection) {
                       axios.post(value.statusurl, { message: 'Status Disconnected',value:'disconnected' })
                           .then(response => {
                               
-                              let sessionsRepository = connection.getRepository(Sessions);
+                              //let sessionsRepository = connection.getRepository(Sessions);
                               const sesobj = new Sessions(AllObj.CSession.id,AllObj.CSession.session,AllObj.CSession.session.number,responseObj.key,0,value.url,value.licenceKey,value.statusurl);
                               sessionsRepository.save(sesobj).then(values => { AllObj.CSession = values });
 
@@ -451,6 +463,8 @@ typeorm.createConnection().then(async function (connection) {
                   catch(err)
                   {
                       console.log(err);
+                      const eventlogobj = new eventlog(0,'OnSend','Fail',err,AllObj.CSession.session.number,AllObj.CSession.session.apikey);
+                      eventlogRepo.save(eventlogobj);
                       res.json({ message: err.message });  
                   }
                       
@@ -497,16 +511,18 @@ typeorm.createConnection().then(async function (connection) {
                           });
                       }
                   } catch (err) {
+                    const eventlogobj = new eventlog(0,'OnSendFile','Fail',err,AllObj.CSession.session.number,AllObj.CSession.session.apikey);
+                    eventlogRepo.save(eventlogobj);
                       res.status(500).send(err);
                   }
               });
-              router.post(`/${responseObj.key}/sendfileurl`, async (req, res) => {
-                  console.log('req.body => ', req.body);
-                  const number = req.body.number.includes('@c.us') ? req.body.number : `${req.body.number}@c.us`;
+              router.post(`/${responseObj.key}/sendfileurl`, async (req1, res) => {
+                  console.log('req.body => ', req1.body);
+                  const number = req1.body.number.includes('@c.us') ? req1.body.number : `${req1.body.number}@c.us`;
                           
               
                   try {
-                      if(!req.body.url) {
+                      if(!req1.body.url) {
                           res.send({
                               status: false,
                               message: 'No url found'
@@ -514,10 +530,10 @@ typeorm.createConnection().then(async function (connection) {
                       } else {
                           //Use the name of the input field (i.e. "avatar") to retrieve the uploaded filere
       
-                          axios.get(req.body.url,{
+                          axios.get(req1.body.url,{
                               responseType: 'arraybuffer'
                           }).then(async resp => {                                        
-                              const objfile = new MessageMedia(resp.headers['content-type'],Buffer.from(resp.data, 'binary').toString('base64'),req.body.url.substring(req.body.url.lastIndexOf('/')+1));
+                              const objfile = new MessageMedia(resp.headers['content-type'],Buffer.from(resp.data, 'binary').toString('base64'),req1.body.url.substring(req1.body.url.lastIndexOf('/')+1));
                               //console.log(objfile);
                               const sentmsg = await nClient.sendMessage(number, objfile);
                               //console.log('sentmsg ',sentmsg );
@@ -526,7 +542,7 @@ typeorm.createConnection().then(async function (connection) {
                                   status: true,
                                   message: 'File is uploaded',
                                   data: {
-                                      name: req.body.url.substring(req.body.url.lastIndexOf('/')+1),
+                                      name: req1.body.url.substring(req1.body.url.lastIndexOf('/')+1),
                                       mimetype: resp.headers['content-type'],
                                       size: resp.headers['content-length'],
                                       id: sentmsg.id
@@ -537,6 +553,8 @@ typeorm.createConnection().then(async function (connection) {
                           
                       }
                   } catch (err) {
+                    const eventlogobj = new eventlog(0,'OnSendFileURL','Fail',err,AllObj.CSession.session.number,AllObj.CSession.session.apikey);
+                    eventlogRepo.save(eventlogobj);
                       res.status(500).send(err);
                   }
               });
@@ -588,6 +606,8 @@ typeorm.createConnection().then(async function (connection) {
                           });
                       }
                   } catch (err) {
+                    const eventlogobj = new eventlog(0,'OnSendFiles','Fail',err,AllObj.CSession.session.number,AllObj.CSession.session.apikey);
+                    eventlogRepo.save(eventlogobj);
                       res.status(500).send(err);
                   }
               });
@@ -596,7 +616,7 @@ typeorm.createConnection().then(async function (connection) {
                   try {
                       await nClient.logout();
                       await nClient.destroy();
-                      let sessionsRepository = connection.getRepository(Sessions);
+                      //let sessionsRepository = connection.getRepository(Sessions);
                       const sesobj = new Sessions(AllObj.CSession.id,AllObj.CSession.session,AllObj.CSession.session.number,responseObj.key,0,value.url,value.licenceKey,value.statusurl);
                       sessionsRepository.save(sesobj).then(values => { AllObj.CSession = values });
                       if (value.statusurl) {
@@ -606,6 +626,7 @@ typeorm.createConnection().then(async function (connection) {
                                   console.log('response ',response.data);
                               })
                               .catch(error => {
+                                
                                   console.log(error);
                               });
                       }
@@ -613,6 +634,8 @@ typeorm.createConnection().then(async function (connection) {
                   catch(err)
                   {
                       console.log(err);
+                      const eventlogobj = new eventlog(0,'OnDisconnect','Fail',err,AllObj.CSession.session.number,AllObj.CSession.session.apikey);
+                      eventlogRepo.save(eventlogobj);
                   }
                   res.json({ message: 'You are Disconnected from Whatsapp API.' });   
               });
@@ -627,6 +650,8 @@ typeorm.createConnection().then(async function (connection) {
                   catch(err)
                   {
                       console.log(err);
+                      const eventlogobj = new eventlog(0,'OnChatList','Fail',err,AllObj.CSession.session.number,AllObj.CSession.session.apikey);
+                      eventlogRepo.save(eventlogobj);
                       res.json({ message: err.message });  
                   }
                       
@@ -642,6 +667,8 @@ typeorm.createConnection().then(async function (connection) {
                   catch(err)
                   {
                       console.log(err);
+                      const eventlogobj = new eventlog(0,'OnContactList','Fail',err,AllObj.CSession.session.number,AllObj.CSession.session.apikey);
+                      eventlogRepo.save(eventlogobj);
                       res.json({ message: err.message });  
                   }
                       
@@ -659,6 +686,8 @@ typeorm.createConnection().then(async function (connection) {
                   catch(err)
                   {
                       console.log(err);
+                      const eventlogobj = new eventlog(0,'OnHistory','Fail',err,AllObj.CSession.session.number,AllObj.CSession.session.apikey);
+                      eventlogRepo.save(eventlogobj);
                       res.json({ message: err.message });  
                   }
                       
@@ -669,25 +698,12 @@ typeorm.createConnection().then(async function (connection) {
 
         });
 
-       
-
-      
-
-        app.get('/api/sessions', function (req, res) {
-        
-                let sessionsRepository = connection.getRepository(Sessions);
-                sessionsRepository.find().then((values) => res.send(values));
-        
-        });
-        app.post('/api/sessions', function (req, res) {
-                let sessionsRepository = connection.getRepository(Sessions);
-                const sesobj = new Sessions(0,req.body.session,req.body.number,req.body.apikey,1);
-                sessionsRepository.save(sesobj).then((values) => res.send(values));
-        });
-
     });
 
 typeorm.createConnection().then(function (connection) {
+    
+let sessionsRepository = connection.getRepository(Sessions);
+let eventlogRepo = connection.getRepository(eventlog);
 router.post('/init', async function(req, res) {
     console.log('req =>', req.body);
    
@@ -698,8 +714,8 @@ router.post('/init', async function(req, res) {
                 console.log('response ',response.data);
                 // eslint-disable-next-line no-empty
                 if(response.data.message== 'Valid') {
-                 //   const newClient = new Client({ puppeteer: {headless: false} });
-                    const newClient = new Client({ puppeteer: {args: ['--no-sandbox'],ignoreDefaultArgs: ['--disable-extensions'] } });
+                 //  const newClient = new Client({ puppeteer: {headless: false} });
+                     const newClient = new Client({ puppeteer: {args: ['--no-sandbox'],ignoreDefaultArgs: ['--disable-extensions'] } });
                     // You can use an existing session and avoid scanning a QR code by adding a "session" object to the client options.
                     // This object must include WABrowserId, WASecretBundle, WAToken1 and WAToken2.
                     try {
@@ -726,6 +742,8 @@ router.post('/init', async function(req, res) {
                                     console.log('response ',response.data);
                                 })
                                 .catch(error => {
+                                    const eventlogobj = new eventlog(0,'OnQR','Fail',error,null,null);
+                                    eventlogRepo.save(eventlogobj);
                                     console.log(error);
                                 });
                         }
@@ -736,7 +754,7 @@ router.post('/init', async function(req, res) {
                         sessionCfg=session;
                         responseObj.number = session.number;
                         responseObj.name = session.name;
-                        let sessionsRepository = connection.getRepository(Sessions);
+                        //let sessionsRepository = connection.getRepository(Sessions);
                         await sessionsRepository.delete({ number: session.number }  );
                         
                         const sesobj = new Sessions(0,session,session.number,responseObj.key,1,req.body.url,req.body.licenceKey,req.body.statusurl);
@@ -753,9 +771,12 @@ router.post('/init', async function(req, res) {
                                 .then(response => {
                                     console.log('REQ URL ',req.body.statusurl);
                                     console.log('response ',response.data);
-                                    let sessionsRepository = connection.getRepository(Sessions);
+                                    //let sessionsRepository = connection.getRepository(Sessions);
                                     const sesobj = new Sessions(AllObj.CSession.id,AllObj.CSession.session,AllObj.CSession.session.number,responseObj.key,0,req.body.url,req.body.licenceKey,req.body.statusurl);
                                     sessionsRepository.save(sesobj).then(values => { AllObj.CSession = values });
+
+                                    const eventlogobj = new eventlog(0,'OnAuthFail','Fail',msg,AllObj.CSession.session.number,AllObj.CSession.session.apikey);
+                                    eventlogRepo.save(eventlogobj);
                                 })
                                 .catch(error => {
                                     console.log(error);
@@ -773,6 +794,8 @@ router.post('/init', async function(req, res) {
                                 })
                                 .catch(error => {
                                     console.log(error);
+                                    const eventlogobj = new eventlog(0,'OnREADY','Fail',error,AllObj.CSession.session.number,AllObj.CSession.session.apikey);
+                                    eventlogRepo.save(eventlogobj);
                                 });
                         }
                     });
@@ -797,6 +820,8 @@ router.post('/init', async function(req, res) {
                                 })
                                 .catch(error => {
                                     console.log(error);
+                                    const eventlogobj = new eventlog(0,'OnMessageReceived','Fail',error,AllObj.CSession.session.number,AllObj.CSession.session.apikey);
+                                    eventlogRepo.save(eventlogobj);
                                 });
                         }
 
@@ -982,10 +1007,10 @@ router.post('/init', async function(req, res) {
                             // The message was read
                             console.log('ack =>',msg );
                             const actmsg = { id:msg.id , ack:msg.ack }
-                            if (req.body.url) {
-                                axios.post(req.body.url,actmsg)
+                            if (req.body.statusurl) {
+                                axios.post(req.body.statusurl,actmsg)
                                     .then(response => {
-                                        console.log('REQ URL ',req.body.url);
+                                        console.log('REQ URL ',req.body.statusurl);
                                         console.log('actmsg sent ',actmsg );
                                     })
                                     .catch(error => {
@@ -1025,6 +1050,8 @@ router.post('/init', async function(req, res) {
                                     console.log('response ',response.data);
                                 })
                                 .catch(error => {
+                                    const eventlogobj = new eventlog(0,'OnStatusChange','Fail',error,AllObj.CSession.session.number,AllObj.CSession.session.apikey);
+                                    eventlogRepo.save(eventlogobj);
                                     console.log(error);
                                 });
                         }
@@ -1040,11 +1067,13 @@ router.post('/init', async function(req, res) {
                                 .then(response => {
                                     console.log('REQ URL ',req.body.statusurl);
                                     console.log('response ',response.data);
-                                    let sessionsRepository = connection.getRepository(Sessions);
+                                    //let sessionsRepository = connection.getRepository(Sessions);
                                     const sesobj = new Sessions(AllObj.CSession.id,AllObj.CSession.session,AllObj.CSession.session.number,responseObj.key,0,req.body.url,req.body.licenceKey,req.body.statusurl);
                                     sessionsRepository.save(sesobj).then(values => { AllObj.CSession = values });
                                 })
                                 .catch(error => {
+                                    const eventlogobj = new eventlog(0,'Ondisconnected','Fail',error,AllObj.CSession.session.number,responseObj.key);
+                                    eventlogRepo.save(eventlogobj);
                                     console.log(error);
                                 });
                         }
@@ -1071,6 +1100,8 @@ router.post('/init', async function(req, res) {
                         catch(err)
                         {
                             console.log(err);
+                            const eventlogobj = new eventlog(0,'OnSend','Fail',err,AllObj.CSession.session.number,AllObj.CSession.session.apikey);
+                            eventlogRepo.save(eventlogobj);
                             res.json({ message: err.message });  
                         }
                             
@@ -1117,6 +1148,8 @@ router.post('/init', async function(req, res) {
                                 });
                             }
                         } catch (err) {
+                            const eventlogobj = new eventlog(0,'OnSendFile','Fail',err,AllObj.CSession.session.number,AllObj.CSession.session.apikey);
+                            eventlogRepo.save(eventlogobj);
                             res.status(500).send(err);
                         }
                     });
@@ -1157,6 +1190,8 @@ router.post('/init', async function(req, res) {
                                 
                             }
                         } catch (err) {
+                            const eventlogobj = new eventlog(0,'OnSendFileURL','Fail',err,AllObj.CSession.session.number,AllObj.CSession.session.apikey);
+                            eventlogRepo.save(eventlogobj);
                             res.status(500).send(err);
                         }
                     });
@@ -1208,6 +1243,8 @@ router.post('/init', async function(req, res) {
                                 });
                             }
                         } catch (err) {
+                            const eventlogobj = new eventlog(0,'OnSendFiles','Fail',err,AllObj.CSession.session.number,AllObj.CSession.session.apikey);
+                            eventlogRepo.save(eventlogobj);
                             res.status(500).send(err);
                         }
                     });
@@ -1216,7 +1253,7 @@ router.post('/init', async function(req, res) {
                         try {
                             await newClient.logout();
                             await newClient.destroy();
-                            let sessionsRepository = connection.getRepository(Sessions);
+                            //let sessionsRepository = connection.getRepository(Sessions);
                             const sesobj = new Sessions(AllObj.CSession.id,AllObj.CSession.session,AllObj.CSession.session.number,responseObj.key,0,req.body.url,req.body.licenceKey,req.body.statusurl);
                             sessionsRepository.save(sesobj).then(values => { AllObj.CSession = values });
                             if (req.body.statusurl) {
@@ -1233,6 +1270,8 @@ router.post('/init', async function(req, res) {
                         catch(err)
                         {
                             console.log(err);
+                            const eventlogobj = new eventlog(0,'OnDisconnect','Fail',err,AllObj.CSession.session.number,AllObj.CSession.session.apikey);
+                            eventlogRepo.save(eventlogobj);
                         }
                         res.json({ message: 'You are Disconnected from Whatsapp API.' });   
                     });
@@ -1247,6 +1286,8 @@ router.post('/init', async function(req, res) {
                         catch(err)
                         {
                             console.log(err);
+                            const eventlogobj = new eventlog(0,'OnChatList','Fail',err,AllObj.CSession.session.number,AllObj.CSession.session.apikey);
+                            eventlogRepo.save(eventlogobj);
                             res.json({ message: err.message });  
                         }
                             
@@ -1262,6 +1303,8 @@ router.post('/init', async function(req, res) {
                         catch(err)
                         {
                             console.log(err);
+                            const eventlogobj = new eventlog(0,'OnContactList','Fail',err,AllObj.CSession.session.number,AllObj.CSession.session.apikey);
+                            eventlogRepo.save(eventlogobj);
                             res.json({ message: err.message });  
                         }
                             
@@ -1278,6 +1321,8 @@ router.post('/init', async function(req, res) {
                         catch(err)
                         {
                             console.log(err);
+                            const eventlogobj = new eventlog(0,'OnHistory','Fail',err,AllObj.CSession.session.number,AllObj.CSession.session.apikey);
+                            eventlogRepo.save(eventlogobj);
                             res.json({ message: err.message });  
                         }
                             

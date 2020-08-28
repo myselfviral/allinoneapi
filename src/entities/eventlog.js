@@ -20,9 +20,11 @@ module.exports = new EntitySchema({
             type: "text"
         },
         number: {
+            nullable: true,
             type: "varchar"
         },
         apikey: {
+            nullable: true,
             type: "varchar"
         },
 
