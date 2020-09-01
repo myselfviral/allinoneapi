@@ -21,7 +21,7 @@ app.use(fileUpload({
 
 app.use(cors());
 
- https.createServer({
+  https.createServer({
     key: fs.readFileSync('/root/ssl/crmtiger.key'),
     cert: fs.readFileSync('/root/ssl/STAR_crmtiger_com.crt')
   }, app)
@@ -36,8 +36,7 @@ const WAWebJS = require('./index');
 const { Session } = require('inspector');
 
 const SESSION_FILE_PATH = './session.json';
-const responseObj = {};
-const AllObj = {};
+
 let sessionCfg;
 if (fs.existsSync(SESSION_FILE_PATH)) {
  //    sessionCfg = require(SESSION_FILE_PATH);  //  sessionCfg = require(SESSION_FILE_PATH);
@@ -73,12 +72,13 @@ console.log('Magic happens on port ' + port);
 
 typeorm.createConnection().then(async function (connection) {
 
-   
+        
         let sessionsRepository = connection.getRepository(Sessions);
         let eventlogRepo = connection.getRepository(eventlog);
         sessionsRepository.find({ isActive : 1 }).then( values => {
         values.forEach(async value => {
-
+            const responseObj = {};
+            const AllObj = {};
            // const nClient = new Client({ puppeteer: {headless: false}, session: value.session });
               const nClient = new Client({ puppeteer: {args: ['--no-sandbox'],ignoreDefaultArgs: ['--disable-extensions'] }, session: value.session });
               // You can use an existing session and avoid scanning a QR code by adding a "session" object to the client options.
@@ -122,7 +122,7 @@ typeorm.createConnection().then(async function (connection) {
                   responseObj.name = session.name;
                   //let sessionsRepository = connection.getRepository(Sessions);
                   await sessionsRepository.delete({ number: session.number }  );
-                  const sesobj = new Sessions(0,session,session.number,responseObj.key,1,value.url,value.licenceKey,value.statusurl);
+                  const sesobj = new Sessions(0,session,session.number,value.apikey,1,value.url,value.licenceKey,value.statusurl);
                   await sessionsRepository.save(sesobj).then(values => { AllObj.CSession = values }); 
               });
       
@@ -135,10 +135,10 @@ typeorm.createConnection().then(async function (connection) {
                               console.log('REQ URL ',value.statusurl);
                               console.log('response ',response.data);
                               //let sessionsRepository = connection.getRepository(Sessions);
-                              const sesobj = new Sessions(AllObj.CSession.id,AllObj.CSession.session,AllObj.CSession.session.number,responseObj.key,0,value.url,value.licenceKey,value.statusurl);
-                              sessionsRepository.save(sesobj).then(values => { AllObj.CSession = values });
+                              const sesobj = new Sessions(value.id,value.session,value.number,value.apikey,0,value.url,value.licenceKey,value.statusurl);
+                              sessionsRepository.save(sesobj).then(values => { AllObj.CSession = values; console.log(value); });
 
-                              const eventlogobj = new eventlog(0,'OnAuthFail','Fail',msg,AllObj.CSession.session.number,AllObj.CSession.session.apikey);
+                              const eventlogobj = new eventlog(0,'OnAuthFail','Fail',msg,value.number,value.apikey);
                               eventlogRepo.save(eventlogobj);
                           })
                           .catch(error => {
@@ -411,6 +411,8 @@ typeorm.createConnection().then(async function (connection) {
                         .then(response => {
                             console.log('REQ URL ',value.url);
                             console.log('response ',response.data);
+                            const eventlogobj = new eventlog(0,'OnStatusChange','Success','',AllObj.CSession.session.number,AllObj.CSession.session.apikey);
+                            eventlogRepo.save(eventlogobj);
                         })
                         .catch(error => {
                             const eventlogobj = new eventlog(0,'OnStatusChange','Fail',error,AllObj.CSession.session.number,AllObj.CSession.session.apikey);
@@ -429,14 +431,14 @@ typeorm.createConnection().then(async function (connection) {
                           .then(response => {
                               
                               //let sessionsRepository = connection.getRepository(Sessions);
-                              const sesobj = new Sessions(AllObj.CSession.id,AllObj.CSession.session,AllObj.CSession.session.number,responseObj.key,0,value.url,value.licenceKey,value.statusurl);
+                              const sesobj = new Sessions(AllObj.CSession.id,AllObj.CSession.session,AllObj.CSession.session.number,AllObj.CSession.session.apikey,0,value.url,value.licenceKey,value.statusurl);
                               sessionsRepository.save(sesobj).then(values => { AllObj.CSession = values });
 
-                              const eventlogobj = new eventlog(0,'Ondisconnected','Success',reason,AllObj.CSession.session.number,responseObj.key);
+                              const eventlogobj = new eventlog(0,'Ondisconnected','Success',reason,AllObj.CSession.session.number,AllObj.CSession.session.apikey);
                               eventlogRepo.save(eventlogobj);
                           })
                           .catch(error => {
-                            const eventlogobj = new eventlog(0,'Ondisconnected','Fail',error,AllObj.CSession.session.number,responseObj.key);
+                            const eventlogobj = new eventlog(0,'Ondisconnected','Fail',error,AllObj.CSession.session.number,AllObj.CSession.session.apikey);
                             eventlogRepo.save(eventlogobj);
                               console.log(error);
                           });
@@ -617,7 +619,7 @@ typeorm.createConnection().then(async function (connection) {
                       await nClient.logout();
                       await nClient.destroy();
                       //let sessionsRepository = connection.getRepository(Sessions);
-                      const sesobj = new Sessions(AllObj.CSession.id,AllObj.CSession.session,AllObj.CSession.session.number,responseObj.key,0,value.url,value.licenceKey,value.statusurl);
+                      const sesobj = new Sessions(AllObj.CSession.id,AllObj.CSession.session,AllObj.CSession.session.number,AllObj.CSession.session.apikey,0,value.url,value.licenceKey,value.statusurl);
                       sessionsRepository.save(sesobj).then(values => { AllObj.CSession = values });
                       if (value.statusurl) {
                           axios.post(value.statusurl, { message: 'Status Disconnected',value:'disconnected' })
@@ -701,10 +703,12 @@ typeorm.createConnection().then(async function (connection) {
     });
 
 typeorm.createConnection().then(function (connection) {
-    
+
 let sessionsRepository = connection.getRepository(Sessions);
 let eventlogRepo = connection.getRepository(eventlog);
 router.post('/init', async function(req, res) {
+    const responseObj = {};
+    const AllObj = {};
     console.log('req =>', req.body);
    
     if (req.body.licenceKey) {
@@ -775,7 +779,7 @@ router.post('/init', async function(req, res) {
                                     const sesobj = new Sessions(AllObj.CSession.id,AllObj.CSession.session,AllObj.CSession.session.number,responseObj.key,0,req.body.url,req.body.licenceKey,req.body.statusurl);
                                     sessionsRepository.save(sesobj).then(values => { AllObj.CSession = values });
 
-                                    const eventlogobj = new eventlog(0,'OnAuthFail','Fail',msg,AllObj.CSession.session.number,AllObj.CSession.session.apikey);
+                                    const eventlogobj = new eventlog(0,'OnAuthFail','Fail',msg,AllObj.CSession.session.number,AllObj.CSession.session.key);
                                     eventlogRepo.save(eventlogobj);
                                 })
                                 .catch(error => {
@@ -1068,11 +1072,11 @@ router.post('/init', async function(req, res) {
                                     console.log('REQ URL ',req.body.statusurl);
                                     console.log('response ',response.data);
                                     //let sessionsRepository = connection.getRepository(Sessions);
-                                    const sesobj = new Sessions(AllObj.CSession.id,AllObj.CSession.session,AllObj.CSession.session.number,responseObj.key,0,req.body.url,req.body.licenceKey,req.body.statusurl);
+                                    const sesobj = new Sessions(AllObj.CSession.id,AllObj.CSession.session,AllObj.CSession.session.number,AllObj.CSession.apikey,0,req.body.url,req.body.licenceKey,req.body.statusurl);
                                     sessionsRepository.save(sesobj).then(values => { AllObj.CSession = values });
                                 })
                                 .catch(error => {
-                                    const eventlogobj = new eventlog(0,'Ondisconnected','Fail',error,AllObj.CSession.session.number,responseObj.key);
+                                    const eventlogobj = new eventlog(0,'Ondisconnected','Fail',error,AllObj.CSession.session.number,AllObj.CSession.apikey);
                                     eventlogRepo.save(eventlogobj);
                                     console.log(error);
                                 });
@@ -1254,7 +1258,7 @@ router.post('/init', async function(req, res) {
                             await newClient.logout();
                             await newClient.destroy();
                             //let sessionsRepository = connection.getRepository(Sessions);
-                            const sesobj = new Sessions(AllObj.CSession.id,AllObj.CSession.session,AllObj.CSession.session.number,responseObj.key,0,req.body.url,req.body.licenceKey,req.body.statusurl);
+                            const sesobj = new Sessions(AllObj.CSession.id,AllObj.CSession.session,AllObj.CSession.session.number,AllObj.CSession.apikey,0,req.body.url,req.body.licenceKey,req.body.statusurl);
                             sessionsRepository.save(sesobj).then(values => { AllObj.CSession = values });
                             if (req.body.statusurl) {
                                 axios.post(req.body.statusurl, { message: 'Status Disconnected',value:'disconnected' })
