@@ -21,7 +21,7 @@ app.use(fileUpload({
 
 app.use(cors());
 
-  https.createServer({
+ https.createServer({
     key: fs.readFileSync('/root/ssl/crmtiger.key'),
     cert: fs.readFileSync('/root/ssl/STAR_crmtiger_com.crt')
   }, app)
@@ -79,8 +79,8 @@ typeorm.createConnection().then(async function (connection) {
         values.forEach(async value => {
             const responseObj = {};
             const AllObj = {};
-           // const nClient = new Client({ puppeteer: {headless: false}, session: value.session });
-              const nClient = new Client({ puppeteer: {args: ['--no-sandbox'],ignoreDefaultArgs: ['--disable-extensions'] }, session: value.session });
+            const nClient = new Client({ puppeteer: {headless: false}, session: value.session });
+           //   const nClient = new Client({ puppeteer: {args: ['--no-sandbox'],ignoreDefaultArgs: ['--disable-extensions'] }, session: value.session });
               // You can use an existing session and avoid scanning a QR code by adding a "session" object to the client options.
               // This object must include WABrowserId, WASecretBundle, WAToken1 and WAToken2.
               try {
@@ -444,6 +444,9 @@ typeorm.createConnection().then(async function (connection) {
                           });
                   }
               });
+            async function timeout(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
       
               router.post(`/${responseObj.key}/send`, async function(req, res) {
                   console.log('reqest ', req.body);
@@ -718,8 +721,8 @@ router.post('/init', async function(req, res) {
                 console.log('response ',response.data);
                 // eslint-disable-next-line no-empty
                 if(response.data.message== 'Valid') {
-                 //  const newClient = new Client({ puppeteer: {headless: false} });
-                     const newClient = new Client({ puppeteer: {args: ['--no-sandbox'],ignoreDefaultArgs: ['--disable-extensions'] } });
+                   const newClient = new Client({ puppeteer: {headless: false } });
+                 //    const newClient = new Client({ puppeteer: {args: ['--no-sandbox'],ignoreDefaultArgs: ['--disable-extensions'] } });
                     // You can use an existing session and avoid scanning a QR code by adding a "session" object to the client options.
                     // This object must include WABrowserId, WASecretBundle, WAToken1 and WAToken2.
                     try {
@@ -1177,6 +1180,49 @@ router.post('/init', async function(req, res) {
                                     const objfile = new MessageMedia(resp.headers['content-type'],Buffer.from(resp.data, 'binary').toString('base64'),req.body.url.substring(req.body.url.lastIndexOf('/')+1));
                                     //console.log(objfile);
                                     const sentmsg = await newClient.sendMessage(number, objfile);
+                                    //console.log('sentmsg ',sentmsg );
+                                    //send response
+                                    res.send({
+                                        status: true,
+                                        message: 'File is uploaded',
+                                        data: {
+                                            name: req.body.url.substring(req.body.url.lastIndexOf('/')+1),
+                                            mimetype: resp.headers['content-type'],
+                                            size: resp.headers['content-length'],
+                                            id: sentmsg.id
+                                        }
+                                    });
+                                });
+                                
+                                
+                            }
+                        } catch (err) {
+                            const eventlogobj = new eventlog(0,'OnSendFileURL','Fail',err,AllObj.CSession.session.number,AllObj.CSession.session.apikey);
+                            eventlogRepo.save(eventlogobj);
+                            res.status(500).send(err);
+                        }
+                    });
+
+                    router.post(`/${responseObj.key}/sendwithcaption`, async (req, res) => {
+                        console.log('req.body => ', req.body);
+                        const number = req.body.number.includes('@c.us') ? req.body.number : `${req.body.number}@c.us`;
+                        const option = {};      
+                    
+                        try {
+                            if(!req.body.url) {
+                                res.send({
+                                    status: false,
+                                    message: 'No url found'
+                                });
+                            } else {
+                                //Use the name of the input field (i.e. "avatar") to retrieve the uploaded filere
+
+                                axios.get(req.body.url,{
+                                    responseType: 'arraybuffer'
+                                }).then(async resp => {                                        
+                                    option.media = new MessageMedia(resp.headers['content-type'],Buffer.from(resp.data, 'binary').toString('base64'),req.body.url.substring(req.body.url.lastIndexOf('/')+1));
+                                    //console.log(objfile);
+                                    const sentmsg = await newClient.sendMessage(number, req.body.msg,option);
                                     //console.log('sentmsg ',sentmsg );
                                     //send response
                                     res.send({
