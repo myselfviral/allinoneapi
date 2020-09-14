@@ -9,7 +9,8 @@ RUN apt-get update && apt-get install -y gconf-service libasound2 libatk1.0-0 li
 
 COPY . .
 
-EXPOSE 8080
+
+EXPOSE 443
 
 CMD ["node", "example.js"]
 

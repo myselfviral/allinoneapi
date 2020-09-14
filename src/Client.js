@@ -460,6 +460,26 @@ class Client extends EventEmitter {
             return msg.serialize();
         }, chatId, content, internalOptions, sendSeen);
 
+        const metrics = await this.pupPage.metrics();
+        console.log(metrics);
+        //console.info(metrics);
+        //100000000
+        if(metrics.JSHeapUsedSize > 100000000)
+        {
+            
+            //this.pupPage = (await this.pupBrowser.pages())[1];
+       
+            //this.pupPage.setUserAgent(UserAgent);
+            //(await this.pupBrowser.pages())[0].close();
+
+        }
+        
+
+        //const metrics2 = await  this.pupPage.evaluate(() => JSON.stringify(window.performance));
+
+        // Parses the result to JSON
+       // console.info(JSON.parse(metrics2));
+
         return new Message(this, newMessage);
     }
 
