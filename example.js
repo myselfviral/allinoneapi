@@ -23,13 +23,13 @@ app.use(fileUpload({
 
 app.use(cors());
 
-  https.createServer({
+  /* https.createServer({
     key: fs.readFileSync('/root/ssl/crmtiger.key'),
     cert: fs.readFileSync('/root/ssl/STAR_crmtiger_com.crt')
   }, app)
   .listen(process.env.PORT || 443, function () {
     console.log('Example app listening on port 443! Go to https://wa.crmtiger.com:443/')
-  })   
+  })    */
 
 const { Client, Location } = require('./index');
 const { default: Axios } = require('axios');
@@ -50,7 +50,7 @@ if (fs.existsSync(SESSION_FILE_PATH)) {
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(morgan('dev'));
-//var port = process.env.PORT || 8080;        // set our port
+var port = process.env.PORT || 8080;        // set our port
 
 // ROUTES FOR OUR API
 // =============================================================================
@@ -68,8 +68,8 @@ app.use('/api', router);
 
 // START THE SERVER
 // =============================================================================
-//app.listen(port);
-//console.log('Magic happens on port ' + port);
+app.listen(port);
+console.log('Magic happens on port ' + port);
 
 typeorm.createConnection({
 	type: "mysql",
@@ -736,12 +736,12 @@ router.post('/init', async function(req, res) {
     console.log('req =>', req.body);
    
     if (req.body.licenceKey) {
-        //axios.post('https://www.crmtiger.com/whatsapp/checklifromapi.php?license_key=' +req.body.licenceKey)   // licence check 
-        //    .then(async response => {                            // licence check 
+        axios.post('https://www.crmtiger.com/whatsapp/checklifromapi.php?license_key=' +req.body.licenceKey)   // licence check 
+            .then(async response => {                            // licence check 
                 console.log('licenceKey ',req.body.licenceKey);
                 console.log('response ',response.data);
                 // eslint-disable-next-line no-empty
-       //         if(response.data.message== 'Valid') {    // licence check 
+                if(response.data.message== 'Valid') {    // licence check 
                  //  const newClient = new Client({ puppeteer: {headless: false } });
                      const newClient = new Client({ puppeteer: {args: ['--no-sandbox'],ignoreDefaultArgs: ['--disable-extensions'] } });
                     // You can use an existing session and avoid scanning a QR code by adding a "session" object to the client options.
@@ -1402,14 +1402,14 @@ router.post('/init', async function(req, res) {
 
                     responseObj.qr= newClient.test;
                     res.json(responseObj);  
-     /*            }
+               }
                 else {
                     res.json({ message: 'LicenceKey is not Valid.' });  
                 }
             })
             .catch(error => {
                 console.log(error);
-            }); */
+            }); 
     }
     else
     {
