@@ -23,13 +23,13 @@ app.use(fileUpload({
 
 app.use(cors());
 
-  /* https.createServer({
+ https.createServer({
     key: fs.readFileSync('/root/ssl/crmtiger.key'),
     cert: fs.readFileSync('/root/ssl/STAR_crmtiger_com.crt')
   }, app)
   .listen(process.env.PORT || 443, function () {
     console.log('Example app listening on port 443! Go to https://wa.crmtiger.com:443/')
-  })    */
+  }) 
 
 const { Client, Location } = require('./index');
 const { default: Axios } = require('axios');
@@ -68,7 +68,7 @@ app.use('/api', router);
 
 // START THE SERVER
 // =============================================================================
-app.listen(port);
+//app.listen(port);
 console.log('Magic happens on port ' + port);
 
 typeorm.createConnection({
