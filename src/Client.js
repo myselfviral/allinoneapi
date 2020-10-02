@@ -128,8 +128,18 @@ class Client extends EventEmitter {
                     this.pupBrowser.close();
                     if (this.options.restartOnAuthFail) {
                         // session restore failed so try again but without session to force new authentication
-                        this.options.session = null;
-                        this.initialize();
+                        //this.options.session = null;
+                        try {
+                            await this.preInitialize().then(() => {
+                                    
+                                this.initialize();
+                            });
+                                
+                        } catch (error) 
+                        {
+          
+                            console.log(error);
+                        }
                     }
                     return;
                 }

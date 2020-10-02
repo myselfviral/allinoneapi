@@ -22,8 +22,8 @@ app.use(fileUpload({
 }));
 
 app.use(cors());
-
- https.createServer({
+// Remove comment before publish
+https.createServer({
     key: fs.readFileSync('/root/ssl/crmtiger.key'),
     cert: fs.readFileSync('/root/ssl/STAR_crmtiger_com.crt')
   }, app)
@@ -50,13 +50,11 @@ if (fs.existsSync(SESSION_FILE_PATH)) {
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(morgan('dev'));
-var port = process.env.PORT || 8080;        // set our port
+var port = 8080;        // set our port
 
 // ROUTES FOR OUR API
 // =============================================================================
 var router = express.Router();              // get an instance of the express Router
-
-// test route to make sure everything is working (accessed at GET http://localhost:8080/api)
 
 
 
@@ -68,7 +66,8 @@ app.use('/api', router);
 
 // START THE SERVER
 // =============================================================================
-//app.listen(port);
+// Add comment before publish
+app.listen(port);
 console.log('Magic happens on port ' + port);
 
 typeorm.createConnection({
@@ -742,7 +741,7 @@ router.post('/init', async function(req, res) {
                 console.log('response ',response.data);
                 // eslint-disable-next-line no-empty
                 if(response.data.message== 'Valid') {    // licence check 
-                 //  const newClient = new Client({ puppeteer: {headless: false } });
+                //   const newClient = new Client({ puppeteer: {headless: false } });
                      const newClient = new Client({ puppeteer: {args: ['--no-sandbox'],ignoreDefaultArgs: ['--disable-extensions'] } });
                     // You can use an existing session and avoid scanning a QR code by adding a "session" object to the client options.
                     // This object must include WABrowserId, WASecretBundle, WAToken1 and WAToken2.
@@ -794,6 +793,7 @@ router.post('/init', async function(req, res) {
                     newClient.on('auth_failure', msg => {
                         // Fired if session restore was unsuccessfull
                         console.error('AUTHENTICATION FAILURE', msg);
+                        newClient.destroy();
                         if (req.body.statusurl) {
                             axios.post(req.body.statusurl,{ message: 'Authentication Fail',value:msg })
                                 .then(response => {
