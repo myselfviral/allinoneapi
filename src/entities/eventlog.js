@@ -27,6 +27,11 @@ module.exports = new EntitySchema({
             nullable: true,
             type: "varchar"
         },
+        createdDate: {
+            nullable: false,
+            type: "timestamp",
+            default: () => "CURRENT_TIMESTAMP"
+        },
 
     }
 });

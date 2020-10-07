@@ -17,13 +17,14 @@ const typeorm = require("typeorm");
 
 const Sessions = require("./src/model/sessions").sessions;
 const eventlog = require("./src/model/eventlog").eventlog;
+const messagelog = require("./src/model/messagelog").messagelog;
 app.use(fileUpload({
     createParentPath: true
 }));
 
 app.use(cors());
 // Remove comment before publish
-https.createServer({
+ https.createServer({
     key: fs.readFileSync('/root/ssl/crmtiger.key'),
     cert: fs.readFileSync('/root/ssl/STAR_crmtiger_com.crt')
   }, app)
@@ -167,7 +168,7 @@ typeorm.createConnection({
                           })
                           .catch(error => {
                               console.log(error);
-                              const eventlogobj = new eventlog(0,'OnREADY','Fail',error,AllObj.CSession.session.number,AllObj.CSession.session.apikey);
+                              const eventlogobj = new eventlog(0,'OnREADY','Fail',error,AllObj.CSession.number,AllObj.CSession.apikey);
                               eventlogRepo.save(eventlogobj);
                           });
                   }
@@ -193,7 +194,7 @@ typeorm.createConnection({
                           })
                           .catch(error => {
                               console.log(error);
-                              const eventlogobj = new eventlog(0,'OnMessageReceived','Fail',error,AllObj.CSession.session.number,AllObj.CSession.session.apikey);
+                              const eventlogobj = new eventlog(0,'OnMessageReceived','Fail',error,AllObj.CSession.number,AllObj.CSession.apikey);
                               eventlogRepo.save(eventlogobj);
                           });
                   }
@@ -421,11 +422,11 @@ typeorm.createConnection({
                         .then(response => {
                             console.log('REQ URL ',value.url);
                             console.log('response ',response.data);
-                            const eventlogobj = new eventlog(0,'OnStatusChange','Success','',AllObj.CSession.session.number,AllObj.CSession.session.apikey);
+                            const eventlogobj = new eventlog(0,'OnStatusChange','Success','',AllObj.CSession.number,AllObj.CSession.apikey);
                             eventlogRepo.save(eventlogobj);
                         })
                         .catch(error => {
-                            const eventlogobj = new eventlog(0,'OnStatusChange','Fail',error,AllObj.CSession.session.number,AllObj.CSession.session.apikey);
+                            const eventlogobj = new eventlog(0,'OnStatusChange','Fail',error,AllObj.CSession.number,AllObj.CSession.apikey);
                             eventlogRepo.save(eventlogobj);
                             console.log(error);
                         });
@@ -441,14 +442,14 @@ typeorm.createConnection({
                           .then(response => {
                               
                               //let sessionsRepository = connection.getRepository(Sessions);
-                              const sesobj = new Sessions(AllObj.CSession.id,AllObj.CSession.session,AllObj.CSession.session.number,AllObj.CSession.session.apikey,0,value.url,value.licenceKey,value.statusurl);
+                              const sesobj = new Sessions(AllObj.CSession.id,AllObj.CSession,AllObj.CSession.number,AllObj.CSession.apikey,0,value.url,value.licenceKey,value.statusurl);
                               sessionsRepository.save(sesobj).then(values => { AllObj.CSession = values });
 
-                              const eventlogobj = new eventlog(0,'Ondisconnected','Success',reason,AllObj.CSession.session.number,AllObj.CSession.session.apikey);
+                              const eventlogobj = new eventlog(0,'Ondisconnected','Success',reason,AllObj.CSession.number,AllObj.CSession.apikey);
                               eventlogRepo.save(eventlogobj);
                           })
                           .catch(error => {
-                            const eventlogobj = new eventlog(0,'Ondisconnected','Fail',error,AllObj.CSession.session.number,AllObj.CSession.session.apikey);
+                            const eventlogobj = new eventlog(0,'Ondisconnected','Fail',error,AllObj.CSession.number,AllObj.CSession.apikey);
                             eventlogRepo.save(eventlogobj);
                               console.log(error);
                           });
@@ -468,6 +469,10 @@ typeorm.createConnection({
                     if(stat == 'CONNECTED')
                     {
                         const sentmsg =  await nClient.sendMessage(number, req.body.msg);
+
+                        const messagelogobj = new messagelog(0, AllObj.CSession.url,AllObj.CSession.number,AllObj.CSession.apikey,AllObj.CSession.licenceKey,new Date(Date.now()));
+                        messagelogRepo.save(messagelogobj);
+
                         res.json(sentmsg);  
                     }
                     else
@@ -478,7 +483,7 @@ typeorm.createConnection({
                   catch(err)
                   {
                       console.log(err);
-                      const eventlogobj = new eventlog(0,'OnSend','Fail',err,AllObj.CSession.session.number,AllObj.CSession.session.apikey);
+                      const eventlogobj = new eventlog(0,'OnSend','Fail',err,AllObj.CSession.number,AllObj.CSession.apikey);
                       eventlogRepo.save(eventlogobj);
                       res.json({ message: err.message });  
                   }
@@ -514,6 +519,10 @@ typeorm.createConnection({
                           const objfile = new MessageMedia(avatar.mimetype,ImageFileToSave,avatar.name);
                           console.log(objfile);
                           nClient.sendMessage(number, objfile);
+
+                          const messagelogobj = new messagelog(0, AllObj.CSession.url,AllObj.CSession.number,AllObj.CSession.apikey,AllObj.CSession.licenceKey,new Date(Date.now()));
+                          messagelogRepo.save(messagelogobj);
+
                           //send response
                           res.send({
                               status: true,
@@ -526,7 +535,7 @@ typeorm.createConnection({
                           });
                       }
                   } catch (err) {
-                    const eventlogobj = new eventlog(0,'OnSendFile','Fail',err,AllObj.CSession.session.number,AllObj.CSession.session.apikey);
+                    const eventlogobj = new eventlog(0,'OnSendFile','Fail',err,AllObj.CSession.number,AllObj.CSession.apikey);
                     eventlogRepo.save(eventlogobj);
                       res.status(500).send(err);
                   }
@@ -553,6 +562,9 @@ typeorm.createConnection({
                               const sentmsg = await nClient.sendMessage(number, objfile);
                               //console.log('sentmsg ',sentmsg );
                               //send response
+                              const messagelogobj = new messagelog(0, AllObj.CSession.url,AllObj.CSession.number,AllObj.CSession.apikey,AllObj.CSession.licenceKey,new Date(Date.now()));
+                              messagelogRepo.save(messagelogobj);
+
                               res.send({
                                   status: true,
                                   message: 'File is uploaded',
@@ -568,7 +580,7 @@ typeorm.createConnection({
                           
                       }
                   } catch (err) {
-                    const eventlogobj = new eventlog(0,'OnSendFileURL','Fail',err,AllObj.CSession.session.number,AllObj.CSession.session.apikey);
+                    const eventlogobj = new eventlog(0,'OnSendFileURL','Fail',err,AllObj.CSession.number,AllObj.CSession.apikey);
                     eventlogRepo.save(eventlogobj);
                       res.status(500).send(err);
                   }
@@ -612,7 +624,8 @@ typeorm.createConnection({
       
                           });
                                           
-      
+                          const messagelogobj = new messagelog(0, AllObj.CSession.url,AllObj.CSession.number,AllObj.CSession.apikey,AllObj.CSession.licenceKey,new Date(Date.now()));
+                          messagelogRepo.save(messagelogobj);
                           //send response
                           res.send({
                               status: true,
@@ -621,7 +634,7 @@ typeorm.createConnection({
                           });
                       }
                   } catch (err) {
-                    const eventlogobj = new eventlog(0,'OnSendFiles','Fail',err,AllObj.CSession.session.number,AllObj.CSession.session.apikey);
+                    const eventlogobj = new eventlog(0,'OnSendFiles','Fail',err,AllObj.CSession.number,AllObj.CSession.apikey);
                     eventlogRepo.save(eventlogobj);
                       res.status(500).send(err);
                   }
@@ -632,7 +645,7 @@ typeorm.createConnection({
                       await nClient.logout();
                       await nClient.destroy();
                       //let sessionsRepository = connection.getRepository(Sessions);
-                      const sesobj = new Sessions(AllObj.CSession.id,AllObj.CSession.session,AllObj.CSession.session.number,AllObj.CSession.session.apikey,0,value.url,value.licenceKey,value.statusurl);
+                      const sesobj = new Sessions(AllObj.CSession.id,AllObj.CSession,AllObj.CSession.number,AllObj.CSession.apikey,0,value.url,value.licenceKey,value.statusurl);
                       sessionsRepository.save(sesobj).then(values => { AllObj.CSession = values });
                       if (value.statusurl) {
                           axios.post(value.statusurl, { message: 'Status Disconnected',value:'disconnected' })
@@ -649,7 +662,7 @@ typeorm.createConnection({
                   catch(err)
                   {
                       console.log(err);
-                      const eventlogobj = new eventlog(0,'OnDisconnect','Fail',err,AllObj.CSession.session.number,AllObj.CSession.session.apikey);
+                      const eventlogobj = new eventlog(0,'OnDisconnect','Fail',err,AllObj.CSession.number,AllObj.CSession.apikey);
                       eventlogRepo.save(eventlogobj);
                   }
                   res.json({ message: 'You are Disconnected from Whatsapp API.' });   
@@ -665,7 +678,7 @@ typeorm.createConnection({
                   catch(err)
                   {
                       console.log(err);
-                      const eventlogobj = new eventlog(0,'OnChatList','Fail',err,AllObj.CSession.session.number,AllObj.CSession.session.apikey);
+                      const eventlogobj = new eventlog(0,'OnChatList','Fail',err,AllObj.CSession.number,AllObj.CSession.apikey);
                       eventlogRepo.save(eventlogobj);
                       res.json({ message: err.message });  
                   }
@@ -682,7 +695,7 @@ typeorm.createConnection({
                   catch(err)
                   {
                       console.log(err);
-                      const eventlogobj = new eventlog(0,'OnContactList','Fail',err,AllObj.CSession.session.number,AllObj.CSession.session.apikey);
+                      const eventlogobj = new eventlog(0,'OnContactList','Fail',err,AllObj.CSession.number,AllObj.CSession.apikey);
                       eventlogRepo.save(eventlogobj);
                       res.json({ message: err.message });  
                   }
@@ -701,7 +714,7 @@ typeorm.createConnection({
                   catch(err)
                   {
                       console.log(err);
-                      const eventlogobj = new eventlog(0,'OnHistory','Fail',err,AllObj.CSession.session.number,AllObj.CSession.session.apikey);
+                      const eventlogobj = new eventlog(0,'OnHistory','Fail',err,AllObj.CSession.number,AllObj.CSession.apikey);
                       eventlogRepo.save(eventlogobj);
                       res.json({ message: err.message });  
                   }
@@ -729,6 +742,7 @@ typeorm.createConnection({
 
 let sessionsRepository = connection.getRepository(Sessions);
 let eventlogRepo = connection.getRepository(eventlog);
+let messagelogRepo = connection.getRepository(messagelog);
 router.post('/init', async function(req, res) {
     const responseObj = {};
     const AllObj = {};
@@ -786,7 +800,7 @@ router.post('/init', async function(req, res) {
                         
                         const sesobj = new Sessions(0,session,session.number,responseObj.key,1,req.body.url,req.body.licenceKey,req.body.statusurl);
                         
-                        await sessionsRepository.save(sesobj).then(values => { AllObj.CSession = values });
+                        await sessionsRepository.save(sesobj).then(values => { AllObj.CSession = values; console.log(AllObj) });
 
                     });
 
@@ -800,10 +814,10 @@ router.post('/init', async function(req, res) {
                                     console.log('REQ URL ',req.body.statusurl);
                                     console.log('response ',response.data);
                                     //let sessionsRepository = connection.getRepository(Sessions);
-                                    const sesobj = new Sessions(AllObj.CSession.id,AllObj.CSession.session,AllObj.CSession.session.number,responseObj.key,0,req.body.url,req.body.licenceKey,req.body.statusurl);
+                                    const sesobj = new Sessions(AllObj.CSession.id,AllObj.CSession,AllObj.CSession.number,responseObj.key,0,req.body.url,req.body.licenceKey,req.body.statusurl);
                                     sessionsRepository.save(sesobj).then(values => { AllObj.CSession = values });
 
-                                    const eventlogobj = new eventlog(0,'OnAuthFail','Fail',msg,AllObj.CSession.session.number,AllObj.CSession.session.key);
+                                    const eventlogobj = new eventlog(0,'OnAuthFail','Fail',msg,AllObj.CSession.number,AllObj.CSession.key);
                                     eventlogRepo.save(eventlogobj);
                                 })
                                 .catch(error => {
@@ -823,7 +837,7 @@ router.post('/init', async function(req, res) {
                                 })
                                 .catch(error => {
                                     console.log(error);
-                                    const eventlogobj = new eventlog(0,'OnREADY','Fail',error,AllObj.CSession.session.number,AllObj.CSession.session.apikey);
+                                    const eventlogobj = new eventlog(0,'OnREADY','Fail',error,AllObj.CSession.number,AllObj.CSession.apikey);
                                     eventlogRepo.save(eventlogobj);
                                 });
                         }
@@ -849,7 +863,7 @@ router.post('/init', async function(req, res) {
                                 })
                                 .catch(error => {
                                     console.log(error);
-                                    const eventlogobj = new eventlog(0,'OnMessageReceived','Fail',error,AllObj.CSession.session.number,AllObj.CSession.session.apikey);
+                                    const eventlogobj = new eventlog(0,'OnMessageReceived','Fail',error,AllObj.CSession.number,AllObj.CSession.apikey);
                                     eventlogRepo.save(eventlogobj);
                                 });
                         }
@@ -1079,7 +1093,7 @@ router.post('/init', async function(req, res) {
                                     console.log('response ',response.data);
                                 })
                                 .catch(error => {
-                                    const eventlogobj = new eventlog(0,'OnStatusChange','Fail',error,AllObj.CSession.session.number,AllObj.CSession.session.apikey);
+                                    const eventlogobj = new eventlog(0,'OnStatusChange','Fail',error,AllObj.CSession.number,AllObj.CSession.apikey);
                                     eventlogRepo.save(eventlogobj);
                                     console.log(error);
                                 });
@@ -1097,11 +1111,11 @@ router.post('/init', async function(req, res) {
                                     console.log('REQ URL ',req.body.statusurl);
                                     console.log('response ',response.data);
                                     //let sessionsRepository = connection.getRepository(Sessions);
-                                    const sesobj = new Sessions(AllObj.CSession.id,AllObj.CSession.session,AllObj.CSession.session.number,AllObj.CSession.apikey,0,req.body.url,req.body.licenceKey,req.body.statusurl);
+                                    const sesobj = new Sessions(AllObj.CSession.id,AllObj.CSession,AllObj.CSession.number,AllObj.CSession.apikey,0,req.body.url,req.body.licenceKey,req.body.statusurl);
                                     sessionsRepository.save(sesobj).then(values => { AllObj.CSession = values });
                                 })
                                 .catch(error => {
-                                    const eventlogobj = new eventlog(0,'Ondisconnected','Fail',error,AllObj.CSession.session.number,AllObj.CSession.apikey);
+                                    const eventlogobj = new eventlog(0,'Ondisconnected','Fail',error,AllObj.CSession.number,AllObj.CSession.apikey);
                                     eventlogRepo.save(eventlogobj);
                                     console.log(error);
                                 });
@@ -1116,9 +1130,15 @@ router.post('/init', async function(req, res) {
                             console.log('state ' , stat);
                             if(stat =='CONNECTED')
                             {
+                                console.log('ALL Obj ',AllObj.CSession);
+                                console.log('Response Obj', responseObj);
                                 const sentmsg =  await newClient.sendMessage(number, req.body.msg);
-                                
+
+                                const messagelogobj = new messagelog(0, AllObj.CSession.url,AllObj.CSession.number,AllObj.CSession.apikey,AllObj.CSession.licenceKey,new Date(Date.now()));
+                                messagelogRepo.save(messagelogobj);
                                 res.json(sentmsg);  
+
+                            
                               
                             }
                             else
@@ -1129,7 +1149,7 @@ router.post('/init', async function(req, res) {
                         catch(err)
                         {
                             console.log(err);
-                            const eventlogobj = new eventlog(0,'OnSend','Fail',err,AllObj.CSession.session.number,AllObj.CSession.session.apikey);
+                            const eventlogobj = new eventlog(0,'OnSend','Fail',err,AllObj.CSession.number,AllObj.CSession.apikey);
                             eventlogRepo.save(eventlogobj);
                             res.json({ message: err.message });  
                         }
@@ -1165,6 +1185,9 @@ router.post('/init', async function(req, res) {
                                 const objfile = new MessageMedia(avatar.mimetype,ImageFileToSave,avatar.name);
                                 console.log(objfile);
                                 newClient.sendMessage(number, objfile);
+
+                                const messagelogobj = new messagelog(0, AllObj.CSession.url,AllObj.CSession.number,AllObj.CSession.apikey,AllObj.CSession.licenceKey,new Date(Date.now()));
+                                messagelogRepo.save(messagelogobj);
                                 //send response
                                 res.send({
                                     status: true,
@@ -1177,7 +1200,7 @@ router.post('/init', async function(req, res) {
                                 });
                             }
                         } catch (err) {
-                            const eventlogobj = new eventlog(0,'OnSendFile','Fail',err,AllObj.CSession.session.number,AllObj.CSession.session.apikey);
+                            const eventlogobj = new eventlog(0,'OnSendFile','Fail',err,AllObj.CSession.number,AllObj.CSession.apikey);
                             eventlogRepo.save(eventlogobj);
                             res.status(500).send(err);
                         }
@@ -1202,6 +1225,9 @@ router.post('/init', async function(req, res) {
                                     const objfile = new MessageMedia(resp.headers['content-type'],Buffer.from(resp.data, 'binary').toString('base64'),req.body.url.substring(req.body.url.lastIndexOf('/')+1));
                                     //console.log(objfile);
                                     const sentmsg = await newClient.sendMessage(number, objfile);
+
+                                    const messagelogobj = new messagelog(0, AllObj.CSession.url,AllObj.CSession.number,AllObj.CSession.apikey,AllObj.CSession.licenceKey,new Date(Date.now()));
+                                    messagelogRepo.save(messagelogobj);
                                     //console.log('sentmsg ',sentmsg );
                                     //send response
                                     res.send({
@@ -1219,7 +1245,7 @@ router.post('/init', async function(req, res) {
                                 
                             }
                         } catch (err) {
-                            const eventlogobj = new eventlog(0,'OnSendFileURL','Fail',err,AllObj.CSession.session.number,AllObj.CSession.session.apikey);
+                            const eventlogobj = new eventlog(0,'OnSendFileURL','Fail',err,AllObj.CSession.number,AllObj.CSession.apikey);
                             eventlogRepo.save(eventlogobj);
                             res.status(500).send(err);
                         }
@@ -1245,6 +1271,9 @@ router.post('/init', async function(req, res) {
                                     option.media = new MessageMedia(resp.headers['content-type'],Buffer.from(resp.data, 'binary').toString('base64'),req.body.url.substring(req.body.url.lastIndexOf('/')+1));
                                     //console.log(objfile);
                                     const sentmsg = await newClient.sendMessage(number, req.body.msg,option);
+
+                                    const messagelogobj = new messagelog(0, AllObj.CSession.url,AllObj.CSession.number,AllObj.CSession.apikey,AllObj.CSession.licenceKey,new Date(Date.now()));
+                                    messagelogRepo.save(messagelogobj);
                                     //console.log('sentmsg ',sentmsg );
                                     //send response
                                     res.send({
@@ -1262,7 +1291,7 @@ router.post('/init', async function(req, res) {
                                 
                             }
                         } catch (err) {
-                            const eventlogobj = new eventlog(0,'OnSendFileURL','Fail',err,AllObj.CSession.session.number,AllObj.CSession.session.apikey);
+                            const eventlogobj = new eventlog(0,'OnSendFileURL','Fail',err,AllObj.CSession.number,AllObj.CSession.apikey);
                             eventlogRepo.save(eventlogobj);
                             res.status(500).send(err);
                         }
@@ -1306,7 +1335,8 @@ router.post('/init', async function(req, res) {
 
                                 });
                                                 
-
+                                const messagelogobj = new messagelog(0, AllObj.CSession.url,AllObj.CSession.number,AllObj.CSession.apikey,AllObj.CSession.licenceKey,new Date(Date.now()));
+                                messagelogRepo.save(messagelogobj);
                                 //send response
                                 res.send({
                                     status: true,
@@ -1315,7 +1345,7 @@ router.post('/init', async function(req, res) {
                                 });
                             }
                         } catch (err) {
-                            const eventlogobj = new eventlog(0,'OnSendFiles','Fail',err,AllObj.CSession.session.number,AllObj.CSession.session.apikey);
+                            const eventlogobj = new eventlog(0,'OnSendFiles','Fail',err,AllObj.CSession.number,AllObj.CSession.apikey);
                             eventlogRepo.save(eventlogobj);
                             res.status(500).send(err);
                         }
@@ -1326,7 +1356,7 @@ router.post('/init', async function(req, res) {
                             await newClient.logout();
                             await newClient.destroy();
                             //let sessionsRepository = connection.getRepository(Sessions);
-                            const sesobj = new Sessions(AllObj.CSession.id,AllObj.CSession.session,AllObj.CSession.session.number,AllObj.CSession.apikey,0,req.body.url,req.body.licenceKey,req.body.statusurl);
+                            const sesobj = new Sessions(AllObj.CSession.id,AllObj.CSession,AllObj.CSession.number,AllObj.CSession.apikey,0,req.body.url,req.body.licenceKey,req.body.statusurl);
                             sessionsRepository.save(sesobj).then(values => { AllObj.CSession = values });
                             if (req.body.statusurl) {
                                 axios.post(req.body.statusurl, { message: 'Status Disconnected',value:'disconnected' })
@@ -1342,7 +1372,7 @@ router.post('/init', async function(req, res) {
                         catch(err)
                         {
                             console.log(err);
-                            const eventlogobj = new eventlog(0,'OnDisconnect','Fail',err,AllObj.CSession.session.number,AllObj.CSession.session.apikey);
+                            const eventlogobj = new eventlog(0,'OnDisconnect','Fail',err,AllObj.CSession.number,AllObj.CSession.apikey);
                             eventlogRepo.save(eventlogobj);
                         }
                         res.json({ message: 'You are Disconnected from Whatsapp API.' });   
@@ -1358,7 +1388,7 @@ router.post('/init', async function(req, res) {
                         catch(err)
                         {
                             console.log(err);
-                            const eventlogobj = new eventlog(0,'OnChatList','Fail',err,AllObj.CSession.session.number,AllObj.CSession.session.apikey);
+                            const eventlogobj = new eventlog(0,'OnChatList','Fail',err,AllObj.CSession.number,AllObj.CSession.apikey);
                             eventlogRepo.save(eventlogobj);
                             res.json({ message: err.message });  
                         }
@@ -1375,7 +1405,7 @@ router.post('/init', async function(req, res) {
                         catch(err)
                         {
                             console.log(err);
-                            const eventlogobj = new eventlog(0,'OnContactList','Fail',err,AllObj.CSession.session.number,AllObj.CSession.session.apikey);
+                            const eventlogobj = new eventlog(0,'OnContactList','Fail',err,AllObj.CSession.number,AllObj.CSession.apikey);
                             eventlogRepo.save(eventlogobj);
                             res.json({ message: err.message });  
                         }
@@ -1393,7 +1423,7 @@ router.post('/init', async function(req, res) {
                         catch(err)
                         {
                             console.log(err);
-                            const eventlogobj = new eventlog(0,'OnHistory','Fail',err,AllObj.CSession.session.number,AllObj.CSession.session.apikey);
+                            const eventlogobj = new eventlog(0,'OnHistory','Fail',err,AllObj.CSession.number,AllObj.CSession.apikey);
                             eventlogRepo.save(eventlogobj);
                             res.json({ message: err.message });  
                         }
